@@ -31,6 +31,34 @@ describe('normalizeText', () => {
     expect(normalizeText('I have 3 brothers')).toBe('i have three brothers')
   })
 
+  it('spells out numbers above twenty', () => {
+    expect(normalizeText('45 minutes')).toBe('forty five minutes')
+    expect(normalizeText('100 people')).toBe('one hundred people')
+  })
+
+  it('leaves numbers it cannot spell alone rather than guessing', () => {
+    expect(normalizeText('the year 1999')).toBe('the year 1999')
+  })
+
+  it('spells out ordinals, which recognizers write as digits', () => {
+    // Advanced passage 21 reads "the twelfth contradiction"; Chrome transcribes
+    // that as "the 12th contradiction", which used to score as a mispronounced
+    // word for every speaker.
+    expect(normalizeText('the 12th contradiction')).toBe('the twelfth contradiction')
+    expect(normalizeText('the 1st of May')).toBe('the first of may')
+    expect(normalizeText('her 21st birthday')).toBe('her twenty first birthday')
+    expect(normalizeText('the 40th anniversary')).toBe('the fortieth anniversary')
+  })
+
+  it('spells out clock times, so both spellings compare equal', () => {
+    expect(normalizeText('leaves at 6:15')).toBe('leaves at six fifteen')
+    expect(normalizeText('leaves at 6:05')).toBe('leaves at six oh five')
+  })
+
+  it("matches o'clock however it is transcribed", () => {
+    expect(normalizeText('at 6:00')).toBe(normalizeText("at six o'clock"))
+  })
+
   it('handles curly apostrophes from copied text', () => {
     expect(normalizeText('I’m here')).toBe('i am here')
   })

@@ -83,7 +83,7 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: 15,
-    text: 'My brother is learning how to play the violin. He practises every evening, and he is getting better each week.',
+    text: 'My brother is learning how to play the violin. He practices every evening, and he is getting better each week.',
     level: 'intermediate',
   },
   {
@@ -128,7 +128,7 @@ export const EXERCISES: Exercise[] = [
   // Long Latinate words whose stress moves, plus a mouthful of a subject line.
   {
     id: 23,
-    text: 'Statistically speaking, the phenomenon is unremarkable; particular regions have always reported irregular figures, and the specialists specifically warned against reading too much into them. What is genuinely remarkable is how quickly a badly worded summary travelled around the world before anybody thought to check the arithmetic.',
+    text: 'Statistically speaking, the phenomenon is unremarkable; particular regions have always reported irregular figures, and the specialists specifically warned against reading too much into them. What is genuinely remarkable is how quickly a badly worded summary traveled around the world before anybody thought to check the arithmetic.',
     level: 'advanced',
   },
   // Fast idiomatic speech: contractions, weak forms, and a running argument.
@@ -140,7 +140,7 @@ export const EXERCISES: Exercise[] = [
   // Times and places rattled off the way people really give directions.
   {
     id: 25,
-    text: 'Her flight leaves at a quarter past six on Thursday morning, connects through Amsterdam, and lands the following afternoon. She has thirty minutes to change terminals, which anybody who has been through that airport will tell you is optimistic to the point of comedy.',
+    text: 'Her flight leaves at six fifteen on Thursday morning, connects through Amsterdam, and lands the following afternoon. She has thirty minutes to change terminals, which anybody who has been through that airport will tell you is optimistic to the point of comedy.',
     level: 'advanced',
   },
   // Office register, and February, which almost nobody says as it is written.

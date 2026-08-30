@@ -3,7 +3,7 @@
  *
  * These render the real component tree to a string, which catches broken
  * props, bad imports, and crashes on the paths a browser test would exercise
- * first. Interactive behaviour is left to manual testing in a browser.
+ * first. Interactive behavior is left to manual testing in a browser.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'

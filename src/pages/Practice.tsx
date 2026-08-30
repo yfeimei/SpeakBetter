@@ -132,6 +132,7 @@ export function Practice({
     void recorder.start({
       maxMs: recordingBudgetMs(countWords(exercise.text)),
       continuous: isParagraph(exercise.text),
+      target: exercise.text,
     })
   }, [recorder, exercise.text])
 

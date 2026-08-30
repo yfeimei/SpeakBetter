@@ -106,7 +106,7 @@ so scores are comparable across levels.
 An extra word weighs half: adding a word still shows you produced the target
 text, whereas dropping one means part of it was never said.
 
-It is labelled **Speaking Match**, not a pronunciation score — it measures how
+It is labeled **Speaking Match**, not a pronunciation score — it measures how
 closely the recognizer's transcript matches the target text, which is a useful
 practice signal but not a validated pronunciation assessment.
 
@@ -176,9 +176,9 @@ Two things had to change to support that:
 - **Recognition runs in continuous mode** above twelve words. This is not
   optional — with it off, the recognizer treats the first pause as the end of
   the utterance, so on a three-sentence paragraph it would transcribe only the
-  opening sentence and report everything after the first full stop as missing.
+  opening sentence and report everything after the first period as missing.
 
-Single sentences keep continuous mode off, which preserves the nice behaviour
+Single sentences keep continuous mode off, which preserves the nice behavior
 of stopping automatically the moment you finish speaking.
 
 ### Your own sentences
@@ -270,7 +270,7 @@ disk and nothing is uploaded by this app.
 
 One caveat worth stating plainly: Chrome's `SpeechRecognition` implementation
 sends audio to Google's speech service for transcription. That is the browser's
-behaviour, not this app's, but "runs in your browser" does not mean "audio never
+behavior, not this app's, but "runs in your browser" does not mean "audio never
 leaves your device."
 
 ### Reliability
@@ -301,39 +301,6 @@ connection.
 
 ---
 
-## Deployment
-
-**See [DEPLOYMENT.md](DEPLOYMENT.md)** for the full guide: buying a domain,
-choosing a host, DNS records, and a post-deploy checklist.
-
-The short version:
-
-```bash
-# 1. Set your domain
-#    .env  ->  VITE_SITE_URL=https://yourdomain.com
-
-# 2. Build
-npm run check     # tests, then production build into dist/
-
-# 3. Upload dist/ to any static host
-```
-
-The repo ships ready-made config for Netlify (`netlify.toml`), Vercel
-(`vercel.json`), Cloudflare Pages (`public/_headers`), and GitHub Pages
-(`.github/workflows/deploy.yml`), each with security headers and cache rules.
-A post-build step writes `sitemap.xml`, the robots `Sitemap:` line, and the
-GitHub Pages `CNAME` from your configured domain.
-
-Serve it over **HTTPS** — browsers only grant microphone access on a secure
-origin (`localhost` is exempt for development). Every host above issues a
-certificate automatically.
-
-Routing is hash-based, so no SPA rewrite rules are needed, and `base` is `./`
-so the build also works from a subpath such as
-`https://user.github.io/speakbetter/`.
-
----
-
 ## Tests
 
 ```bash
@@ -353,7 +320,7 @@ npm test
   are asserted verbatim, so an engine change that would make the document
   wrong fails the build instead of leaving stale examples behind.
 - **Coaching** — word rules, pattern fallback, feedback wording, tip cap.
-- **Suggestions** — pace maths including the short-sentence guard, confidence
+- **Suggestions** — pace math including the short-sentence guard, confidence
   handling (0 means "not reported", not "bad"), and the guarantee that a
   perfect score still produces advice.
 - **Custom sentences** — validation and that they score identically to library
@@ -364,7 +331,7 @@ npm test
 - **Rendering** — Home, Practice, ResultCard and ProgressCard render without
   crashing and contain the expected content.
 
-Interactive audio behaviour — microphone permission, recording, recognition —
+Interactive audio behavior — microphone permission, recording, recognition —
 is verified manually in a browser, since it needs real hardware and a real
 speech service.
 

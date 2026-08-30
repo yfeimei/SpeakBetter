@@ -14,6 +14,7 @@ import {
   MIN_RECORDING_MS,
   collectSessionTranscript,
   mergeTranscripts,
+  pickAlternative,
   recordingBudgetMs,
   type RecognitionResultLike,
 } from './useSpeechRecorder'
@@ -141,6 +142,85 @@ describe('collectSessionTranscript', () => {
 
   it('returns empty values for an empty result list', () => {
     expect(collectSessionTranscript([])).toEqual({ final: '', interim: '', confidences: [] })
+  })
+})
+
+/**
+ * Chrome orders its candidates for open dictation, not for reading aloud. Given
+ * the target text the better candidate is often the second or third one, and
+ * taking the first blindly cost the speaker marks for a transcription choice
+ * they had no control over.
+ */
+describe('pickAlternative', () => {
+  /** One final result carrying several candidate transcripts. */
+  const alternatives = (...transcripts: string[]): RecognitionResultLike => {
+    const result: Record<number, { transcript: string; confidence: number }> = {}
+    transcripts.forEach((transcript, index) => {
+      // Chrome scores only its first choice; the rest come back at zero.
+      result[index] = { transcript, confidence: index === 0 ? 0.9 : 0 }
+    })
+    return { isFinal: true, length: transcripts.length, ...result }
+  }
+
+  const counts = (text: string) => {
+    const map = new Map<string, number>()
+    for (const word of text.toLowerCase().split(/\s+/)) map.set(word, (map.get(word) ?? 0) + 1)
+    return map
+  }
+
+  it('takes the recognizer first choice when there is no target', () => {
+    const picked = pickAlternative(alternatives('the rural jury', 'the rural juror'), null)
+    expect(picked?.transcript).toBe('the rural jury')
+  })
+
+  it('prefers the candidate that matches the target', () => {
+    const picked = pickAlternative(
+      alternatives('the rural jury', 'the rural juror'),
+      counts('the rural juror thought'),
+    )
+    expect(picked?.transcript).toBe('the rural juror')
+  })
+
+  it('keeps the recognizer ordering when candidates fit equally well', () => {
+    const picked = pickAlternative(
+      alternatives('the whole trial', 'the whole trial'),
+      counts('the whole trial was ridiculous'),
+    )
+    expect(picked?.transcript).toBe('the whole trial')
+  })
+
+  it('does not reward a candidate for repeating one target word', () => {
+    const picked = pickAlternative(
+      alternatives('the the the the', 'the twelfth contradiction'),
+      counts('the twelfth contradiction to arrive'),
+    )
+    expect(picked?.transcript).toBe('the twelfth contradiction')
+  })
+
+  it('borrows the first choice confidence when a runner-up wins', () => {
+    const picked = pickAlternative(
+      alternatives('the rural jury', 'the rural juror'),
+      counts('the rural juror thought'),
+    )
+    expect(picked?.confidence).toBe(0.9)
+  })
+
+  it('reads a single-alternative result unchanged', () => {
+    expect(pickAlternative(final(SENTENCE_ONE), counts(SENTENCE_ONE))?.transcript).toBe(
+      SENTENCE_ONE,
+    )
+  })
+
+  it('chooses per result, so a passage can take one from each', () => {
+    const { final: text } = collectSessionTranscript(
+      [
+        alternatives('the rural jury', 'the rural juror'),
+        alternatives('was radicals', 'was ridiculous'),
+      ],
+      'the rural juror thought the whole trial was ridiculous',
+    )
+
+    expect(text.trim()).toBe('the rural juror was ridiculous')
   })
 })
 

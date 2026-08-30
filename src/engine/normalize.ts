@@ -67,36 +67,90 @@ const CONTRACTIONS: Record<string, string> = {
  * ("3" vs "three"). Spoken aloud these are identical, so they should not
  * count as errors.
  */
-const NUMBER_WORDS: Record<string, string> = {
-  '0': 'zero',
-  '1': 'one',
-  '2': 'two',
-  '3': 'three',
-  '4': 'four',
-  '5': 'five',
-  '6': 'six',
-  '7': 'seven',
-  '8': 'eight',
-  '9': 'nine',
-  '10': 'ten',
-  '11': 'eleven',
-  '12': 'twelve',
-  '13': 'thirteen',
-  '14': 'fourteen',
-  '15': 'fifteen',
-  '16': 'sixteen',
-  '17': 'seventeen',
-  '18': 'eighteen',
-  '19': 'nineteen',
-  '20': 'twenty',
-  '30': 'thirty',
-  '40': 'forty',
-  '50': 'fifty',
-  '60': 'sixty',
-  '70': 'seventy',
-  '80': 'eighty',
-  '90': 'ninety',
-  '100': 'one hundred',
+const ONES = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+  'seventeen', 'eighteen', 'nineteen',
+]
+
+const TENS = [
+  '', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
+]
+
+/** Spell out 0-100. Anything larger is left as digits — it is not worth guessing. */
+function spellNumber(value: number): string | null {
+  if (!Number.isInteger(value) || value < 0 || value > 100) return null
+  if (value < 20) return ONES[value]
+  if (value === 100) return 'one hundred'
+
+  const tens = TENS[Math.floor(value / 10)]
+  const ones = value % 10
+  return ones === 0 ? tens : `${tens} ${ONES[ones]}`
+}
+
+/**
+ * Ordinals whose spoken form is not simply the cardinal plus "th". Everything
+ * else follows the rule, so only the exceptions are listed.
+ */
+const IRREGULAR_ORDINALS: Record<string, string> = {
+  one: 'first',
+  two: 'second',
+  three: 'third',
+  five: 'fifth',
+  eight: 'eighth',
+  nine: 'ninth',
+  twelve: 'twelfth',
+  twenty: 'twentieth',
+  thirty: 'thirtieth',
+  forty: 'fortieth',
+  fifty: 'fiftieth',
+  sixty: 'sixtieth',
+  seventy: 'seventieth',
+  eighty: 'eightieth',
+  ninety: 'ninetieth',
+}
+
+/**
+ * Spell out an ordinal: 12 -> "twelfth", 21 -> "twenty first".
+ *
+ * Recognizers write ordinals as digits ("the 12th contradiction") where a
+ * passage spells them out ("the twelfth contradiction"). Read aloud the two are
+ * the same words, so without this the speaker is marked down for a
+ * transcription style they had no control over.
+ */
+function spellOrdinal(value: number): string | null {
+  const cardinal = spellNumber(value)
+  if (cardinal === null) return null
+
+  const words = cardinal.split(' ')
+  const last = words[words.length - 1]
+  words[words.length - 1] = IRREGULAR_ORDINALS[last] ?? `${last}th`
+  return words.join(' ')
+}
+
+/** "6:15" -> "six fifteen", "6:00" -> "six oclock", "6:05" -> "six oh five". */
+function spellClockTime(hours: string, minutes: string): string | null {
+  const hour = spellNumber(Number(hours))
+  if (hour === null) return null
+
+  const minuteValue = Number(minutes)
+  if (minuteValue === 0) return `${hour} oclock`
+
+  const minute = spellNumber(minuteValue)
+  if (minute === null) return null
+
+  // "six oh five", the way a single-digit minute is actually said. The
+  // apostrophe in o'clock is stripped later, so "oclock" is what both sides of
+  // the comparison end up holding.
+  return minuteValue < 10 ? `${hour} oh ${minute}` : `${hour} ${minute}`
+}
+
+/** Digits, with or without an ordinal suffix, spelled out. */
+function spellToken(token: string): string | null {
+  if (/^\d+$/.test(token)) return spellNumber(Number(token))
+
+  const ordinal = /^(\d+)(?:st|nd|rd|th)$/.exec(token)
+  return ordinal ? spellOrdinal(Number(ordinal[1])) : null
 }
 
 /** Curly quotes and unicode dashes, folded to their ASCII equivalents. */
@@ -119,6 +173,12 @@ export function normalizeText(text: string): string {
   out = out.replace(/[a-z]+'[a-z]+/g, (match) => CONTRACTIONS[match] ?? match)
   out = out.replace(/\bcannot\b/g, 'can not')
 
+  // Clock times, before the colon that identifies them is stripped.
+  out = out.replace(
+    /\b(\d{1,2}):(\d{2})\b/g,
+    (match, hours: string, minutes: string) => spellClockTime(hours, minutes) ?? match,
+  )
+
   // Hyphens and slashes join two spoken words ("well-known" -> "well known").
   out = out.replace(/[-/]/g, ' ')
 
@@ -129,7 +189,7 @@ export function normalizeText(text: string): string {
   out = out
     .split(/\s+/)
     .filter(Boolean)
-    .map((token) => NUMBER_WORDS[token] ?? token)
+    .map((token) => spellToken(token) ?? token)
     .join(' ')
 
   return out.trim()

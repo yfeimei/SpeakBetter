@@ -3,7 +3,7 @@
  *
  * SpeakBetter depends on the browser's own speech recognition, and support for
  * it varies more by platform than by anything the app controls. These helpers
- * keep that judgement in one place so the UI and the recorder agree.
+ * keep that judgment in one place so the UI and the recorder agree.
  */
 
 export type PlatformSupport =

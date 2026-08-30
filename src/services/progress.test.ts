@@ -23,7 +23,7 @@ describe('computeStats', () => {
     })
   })
 
-  it('summarises the stored attempts, newest first', () => {
+  it('summarizes the stored attempts, newest first', () => {
     const stats = computeStats([session(81), session(96), session(75)])
 
     expect(stats.sessions).toBe(3)

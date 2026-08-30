@@ -384,7 +384,7 @@ body {
 }
 
 /* A paragraph is set smaller and ranged left so it stays comfortable to read
-   aloud; a single sentence keeps the large centred treatment. */
+   aloud; a single sentence keeps the large centered treatment. */
 .exercise__sentence--paragraph {
   font-size: clamp(1.05rem, 2.6vw, 1.25rem);
   font-weight: 500;

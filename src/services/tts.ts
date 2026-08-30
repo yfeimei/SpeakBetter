@@ -86,7 +86,7 @@ export function speak(text: string, rate: SpeakRate = 'normal'): Promise<void> {
 
     utterance.onend = () => resolve()
     utterance.onerror = (event) => {
-      // Cancelling an utterance fires an error; that is not a real failure.
+      // Canceling an utterance fires an error; that is not a real failure.
       if (event.error === 'interrupted' || event.error === 'canceled') {
         resolve()
         return

@@ -1,7 +1,7 @@
 {
   "name": "SpeakBetter — Your Personal English Coach",
   "short_name": "SpeakBetter",
-  "description": "Practise speaking English with instant word-by-word feedback.",
+  "description": "Practice speaking English with instant word-by-word feedback.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

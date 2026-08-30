@@ -161,7 +161,7 @@ export const WORD_RULES: Record<string, WordRule> = {
   },
   months: {
     sound: 'TH',
-    tip: 'A hard cluster. Practise "munth-s" slowly, then speed up.',
+    tip: 'A hard cluster. Practice "munth-s" slowly, then speed up.',
   },
   sixth: {
     sound: 'TH',

@@ -13,7 +13,7 @@ interface ExerciseCardProps {
 /** The practice text with its Listen controls. */
 export function ExerciseCard({ sentence, speaking, onListen, disabled }: ExerciseCardProps) {
   // A paragraph is set smaller and ranged left; a single sentence stays large
-  // and centred, so it still reads like a headline.
+  // and centered, so it still reads like a headline.
   const paragraph = isParagraph(sentence)
 
   return (

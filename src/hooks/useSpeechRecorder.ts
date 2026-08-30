@@ -47,10 +47,16 @@ export interface RecordingOptions {
   maxMs?: number
   /**
    * Keep listening across pauses. Required for paragraphs: with this off the
-   * recognizer stops at the first full stop and only the opening sentence is
+   * recognizer stops at the first period and only the opening sentence is
    * ever transcribed.
    */
   continuous?: boolean
+  /**
+   * The text being read, used only to choose between the recognizer's
+   * candidate transcripts. Omit it and the recognizer's own first choice is
+   * taken, which is the right behavior when there is nothing to read from.
+   */
+  target?: string
 }
 
 /** If recognition never reports completion, stop waiting after this long. */
@@ -116,10 +122,92 @@ const ERROR_MESSAGES: Record<RecorderErrorCode, string> = {
   unknown: 'Something went wrong while recording. Please try again.',
 }
 
-/** The shape of one recognition alternative, kept minimal so it can be tested. */
+/** The shape of one recognition result, kept minimal so it can be tested. */
 export interface RecognitionResultLike {
   isFinal: boolean
+  /** How many alternatives this result carries. Absent means just the one. */
+  readonly length?: number
   readonly [index: number]: { transcript: string; confidence: number }
+}
+
+/**
+ * How many candidate transcripts to ask the recognizer for.
+ *
+ * Chrome returns its alternatives ordered by likelihood, and its first choice
+ * is tuned for open dictation — it has no idea what the learner was reading.
+ * Given the target text we can do better than taking that first guess blindly:
+ * where one alternative says "the 12th contradiction" and another says "the
+ * twelfth contradiction", the second is the one the speaker actually produced.
+ * Five is well past the point where later candidates are plausible.
+ */
+const MAX_ALTERNATIVES = 5
+
+/**
+ * How well a candidate transcript accounts for the words in the target.
+ *
+ * Deliberately mirrors the comparison engine's error weights — a target word
+ * found is worth a full point, a word that is not in the target costs half —
+ * so the alternative chosen here is the one that would score best downstream.
+ * Words are consumed from a running tally, so a candidate cannot earn credit
+ * five times over by repeating a word the target uses once.
+ */
+function targetFit(transcript: string, targetCounts: Map<string, number>): number {
+  const remaining = new Map(targetCounts)
+  let fit = 0
+
+  for (const word of tokenize(transcript)) {
+    const left = remaining.get(word) ?? 0
+    if (left > 0) {
+      remaining.set(word, left - 1)
+      fit += 1
+    } else {
+      fit -= 0.5
+    }
+  }
+
+  return fit
+}
+
+function countWordsIn(text: string): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const word of tokenize(text)) counts.set(word, (counts.get(word) ?? 0) + 1)
+  return counts
+}
+
+/**
+ * Pick the alternative that best matches what the learner was asked to read.
+ *
+ * With no target — a custom sentence typed after recording, say — this is the
+ * recognizer's own first choice, exactly as before.
+ */
+export function pickAlternative(
+  result: RecognitionResultLike,
+  targetCounts: Map<string, number> | null,
+): { transcript: string; confidence: number } | null {
+  const top = result[0]
+  if (!top) return null
+
+  const count = result.length ?? 1
+  if (!targetCounts || count < 2) return top
+
+  let best = top
+  let bestFit = targetFit(top.transcript, targetCounts)
+
+  // Strictly greater, so the recognizer's own ordering wins any tie.
+  for (let i = 1; i < count; i++) {
+    const alternative = result[i]
+    if (!alternative) continue
+
+    const fit = targetFit(alternative.transcript, targetCounts)
+    if (fit > bestFit) {
+      best = alternative
+      bestFit = fit
+    }
+  }
+
+  // Chrome scores only its first choice, so a runner-up reports zero. Falling
+  // back keeps the pace and confidence advice working when one is picked.
+  return best.confidence > 0 ? best : { transcript: best.transcript, confidence: top.confidence }
 }
 
 /** Whether every word of `shorter` opens `longer`, comparing like for like. */
@@ -181,7 +269,10 @@ export function mergeTranscripts(committed: string, incoming: string): Transcrip
  * hold the same utterance several times over, growing a word at a time, so the
  * results are folded together with `mergeTranscripts` rather than joined.
  */
-export function collectSessionTranscript(results: ArrayLike<RecognitionResultLike>): {
+export function collectSessionTranscript(
+  results: ArrayLike<RecognitionResultLike>,
+  target?: string,
+): {
   final: string
   interim: string
   confidences: number[]
@@ -190,9 +281,12 @@ export function collectSessionTranscript(results: ArrayLike<RecognitionResultLik
   let interim = ''
   let confidences: number[] = []
 
+  // Built once for the whole list rather than per result.
+  const targetCounts = target ? countWordsIn(target) : null
+
   for (let i = 0; i < results.length; i++) {
     const result = results[i]
-    const alternative = result[0]
+    const alternative = pickAlternative(result, targetCounts)
     if (!alternative) continue
 
     if (result.isFinal) {
@@ -214,7 +308,7 @@ export function collectSessionTranscript(results: ArrayLike<RecognitionResultLik
   return { final: final === '' ? '' : `${final} `, interim, confidences }
 }
 
-function createRecognition(continuous: boolean): SpeechRecognition | null {
+function createRecognition(continuous: boolean, alternatives: number): SpeechRecognition | null {
   const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition
   if (!Ctor) return null
 
@@ -222,7 +316,7 @@ function createRecognition(continuous: boolean): SpeechRecognition | null {
   recognition.lang = 'en-US'
   recognition.continuous = continuous
   recognition.interimResults = true
-  recognition.maxAlternatives = 1
+  recognition.maxAlternatives = alternatives
   return recognition
 }
 
@@ -238,7 +332,7 @@ export function isRecognitionSupported(): boolean {
  * the recognizer is starved of audio while MediaRecorder holds the microphone,
  * and every attempt comes back as `no-speech`.
  *
- * There is no feature test for this — it is a platform behaviour difference,
+ * There is no feature test for this — it is a platform behavior difference,
  * not a capability — so it comes down to a coarse mobile check. Override with
  * `?capture=1` or `?capture=0` when testing.
  */
@@ -626,6 +720,7 @@ export function useSpeechRecorder(): SpeechRecorder {
 
     // --- Recognition -------------------------------------------------------
     const continuous = options.continuous ?? false
+    const target = options.target
     const startedAt = performance.now()
     const deadline = startedAt + maxMs
 
@@ -638,11 +733,11 @@ export function useSpeechRecorder(): SpeechRecorder {
      * which Android Chrome does routinely even with `continuous` set.
      */
     const launchRecognition = (): boolean => {
-      const recognition = createRecognition(continuous)
+      const recognition = createRecognition(continuous, target ? MAX_ALTERNATIVES : 1)
       if (!recognition) return false
 
       recognition.onresult = (event) => {
-        const { final, interim, confidences } = collectSessionTranscript(event.results)
+        const { final, interim, confidences } = collectSessionTranscript(event.results, target)
 
         // Replaced, never appended — see collectSessionTranscript.
         sessionTranscriptRef.current = final
