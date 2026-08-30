@@ -1,0 +1,1381 @@
+SpeakBetter — English Speaking Coach
+Requirements and Software Design Document
+
+Revision 4 — paragraphs for Intermediate and Advanced
+
+    Intermediate and Advanced practice content becomes paragraphs of two
+    to four sentences rather than single sentences. Reading connected
+    speech is a different skill: intonation has to carry across a
+    sentence boundary, and breaths have to land in sensible places.
+
+    This forced three consequential changes, recorded in sections 5 and
+    8: the recording budget now scales with the length of the passage,
+    speech recognition runs in continuous mode so it does not stop at
+    the first full stop, and scoring is normalized by passage length
+    instead of using fixed penalties.
+
+    Sections affected: 3, 4, 5, 6, 8, 9, 10, 12 (FR-14), 16, 18, 22, 23.
+
+Revision 3 — self-playback, custom sentences, suggestions
+
+    Adds three capabilities: the learner can play back their own
+    recording next to the model pronunciation, practice a sentence they
+    type themselves, and receive improvement suggestions even when the
+    reading was correct.
+
+    Sections affected: 6, 7, 12 (FR-13 to FR-15), 16, 18, 20, 21, 22, 23.
+
+Revision 2 — client-side architecture
+
+    This revision replaces the FastAPI backend of revision 1 with a
+    fully client-side design. Speech recognition now runs in the browser,
+    which removed the only part of the system that genuinely required a
+    server. Section 17 records the reasoning behind that change.
+
+    Sections affected: 12 (FR-6), 13, 14, 15, 16, 17, 18, 20, 21, 22.
+
+============================================================
+1. PROJECT OVERVIEW
+============================================================
+
+Project Name:
+SpeakBetter — English Speaking Coach
+
+Purpose:
+SpeakBetter is a web application that helps English learners practice
+speaking. The user reads a sentence, listens to the correct pronunciation,
+records themselves speaking, receives automated feedback, and tries again.
+
+The MVP does not require an LLM, a server, or a user account.
+
+Core learning loop:
+
+    Choose Practice
+          ↓
+    See a sentence
+          ↓
+    Listen
+          ↓
+    Record
+          ↓
+    Analyze
+          ↓
+    See score and feedback
+          ↓
+    Try Again
+          ↓
+    Next sentence
+
+
+============================================================
+2. PRODUCT REQUIREMENTS
+============================================================
+
+2.1 Main User Experience
+
+The application should feel like a simple personal speaking coach.
+
+The user should be able to:
+
+1. Select a difficulty level.
+2. See an English practice sentence.
+3. Listen to the correct pronunciation.
+4. Record their own speech.
+5. Submit the recording.
+6. See a speaking-match score.
+7. See words that were missed, added, or significantly different.
+8. Receive simple coaching tips.
+9. Listen to the correct version again.
+10. Try the sentence again.
+11. See basic practice progress.
+
+
+============================================================
+3. HOME PAGE
+============================================================
+
+The home page contains:
+
+    SpeakBetter
+    Your Personal English Coach
+
+    Practice speaking. Get feedback. Improve.
+
+    CHOOSE A LEVEL
+
+    ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+    │ Beginner      │ │ Intermediate  │ │ Advanced      │
+    │ Short,        │ │ Short         │ │ Longer        │
+    │ everyday      │ │ paragraphs    │ │ paragraphs    │
+    │ sentences     │ │ of two or     │ │ and complex   │
+    │               │ │ three         │ │ structures    │
+    │ 10 sentences  │ │ 10 paragraphs │ │ 10 paragraphs │
+    └───────────────┘ └───────────────┘ └───────────────┘
+
+    [ Start Practicing ]
+
+    or practice your own sentence
+
+    YOUR PROGRESS
+    Practice Sessions: 12      Average Match: 84%
+    Best Score: 96%            Last Session: 81%
+
+
+Progress is stored in browser localStorage.
+A user-account system is not required.
+
+
+============================================================
+4. PRACTICE PAGE
+============================================================
+
+Example:
+
+    SpeakBetter                         3 / 10
+
+    ( Beginner ) ( Intermediate ) ( Advanced )
+
+             Practice Sentence
+
+       "I would like a cup of coffee."
+
+        [ Listen ]     [ Slowly ]
+
+             [ Record ]
+
+        [ ← Previous ]        [ Skip → ]
+
+
+The user first listens to the correct pronunciation and then records
+themselves speaking. The "Slowly" control replays the same sentence at a
+reduced speaking rate, which helps with longer sentences.
+
+The difficulty level can be changed at any time without returning to the
+home page.
+
+
+============================================================
+5. RECORDING
+============================================================
+
+While recording, the page shows:
+
+    Recording...
+
+           ●            ← pulses with the user's voice level
+
+         00:04
+
+    ▓▓▓▓▓▓░░░░░░░░░░    ← elapsed / remaining
+
+    "i would like a cup"   ← live partial transcript
+
+    [ ■ Stop Recording ]
+
+The browser requests microphone permission and uses the MediaRecorder
+API. The pulsing dot is driven by a Web Audio AnalyserNode measuring the
+live input level, so the user can see that they are being heard.
+
+
+5.1 Recording budget
+
+The time limit scales with the length of the passage, because a
+paragraph cannot be read inside a sentence-sized window:
+
+    budget = 4 s + 0.7 s per word,
+             floored at 15 s, capped at 60 s
+
+    "I like coffee."             3 words   -> 15 s (floor)
+    An intermediate paragraph   21 words   -> 19 s
+    An advanced paragraph       39 words   -> 31 s
+
+The button shows the budget before recording starts, and the progress
+bar drains against it.
+
+
+5.2 Continuous recognition
+
+For anything longer than twelve words, speech recognition runs in
+continuous mode.
+
+This is not optional. With continuous mode off, the recognizer treats
+the first pause as the end of the utterance — so on a three-sentence
+paragraph it would transcribe the opening sentence, stop, and report
+everything after the first full stop as missing. The learner would be
+told they had skipped two-thirds of a passage they read perfectly well.
+
+Single sentences keep continuous mode off, which preserves the pleasant
+behaviour of stopping automatically as soon as the speaker finishes.
+Paragraphs stop on the Stop button or the budget above.
+
+
+============================================================
+6. ANALYSIS RESULT
+============================================================
+
+Example target sentence:
+
+    "I think this is a good idea."
+
+Example user speech:
+
+    "I tink this is good idea."
+
+Actual result produced by the implementation:
+
+    Your Result
+
+             71 / 100
+       SPEAKING MATCH · KEEP PRACTICING
+          ▲ 12 from last try
+
+    I    think    this    is    a    good    idea
+    ✓      ⚠       ✓      ✓    ⚠      ✓       ✓
+
+    We heard: "I tink this is good idea"
+
+    • You missed "a".
+    • Your speech was slightly different around "think" —
+      it sounded like "tink".
+
+    PRONUNCIATION TIP
+    "think" — TH sound
+    Put your tongue lightly between your teeth and let air flow
+    through. Do not say "tink" or "sink".
+
+    WHAT TO WORK ON NEXT
+    Speak up a little
+    The recognizer was unsure of some words even where they matched.
+    Try moving closer to the microphone and opening your mouth a
+    little wider.
+
+    Keep an ear on "this"
+    You got it this time. Voiced TH. Your throat vibrates. "This"
+    should not sound like "dis".
+
+    COMPARE
+    Hear the model pronunciation, then your own attempt straight after.
+
+    CORRECT   [ 🔊 Listen ]
+    YOU       [ ▶ ————•——————  0:04 ]
+
+    [ ↺ Try Again ]      [ Next Sentence → ]
+
+
+Two errors — one mispronounced word and one missing word — across seven
+words: 1 - 2/7 gives 71.
+
+A tip appears only when the problem word matches a coaching rule. In
+this example "think" does; the missing "a" does not, and correctly
+produces no tip.
+
+Two elements are always present, whatever the score:
+
+    Compare       The model pronunciation and the learner's own
+                  recording, side by side. Hearing the difference is
+                  often more useful than reading about it.
+
+    What to work  Suggestions from the suggestion engine (section
+    on next       20.4). These appear even on a perfect reading, so
+                  there is always a next thing to try.
+
+
+The score is presented as a speaking-match score, not as a
+scientifically validated pronunciation score.
+
+Word marks:
+
+    ✓   correct    spoken as written
+    ⚠   problem    recognized as a similar but different word
+    ⚠   missing    in the sentence but never spoken
+    +   extra      spoken but not in the sentence
+
+When the same sentence is attempted more than once, the change from the
+previous attempt is shown beneath the score. This is what makes
+improvement visible during a demonstration.
+
+
+============================================================
+7. PRONUNCIATION COACHING
+============================================================
+
+The MVP provides predefined pronunciation tips.
+
+Example:
+
+    "think"
+
+    Pronunciation Tip
+
+    Focus on the TH sound.
+
+    Put your tongue lightly between your teeth and let air flow through.
+
+    [ Listen ]
+
+    [ Try Again ]
+
+
+The coaching rules are stored locally and do not require an LLM.
+
+Example rules:
+
+    think → TH sound
+    three → TH sound
+    right → R sound
+    very  → V sound
+
+At most three tips are shown at once, one per distinct sound, so the
+result stays readable.
+
+
+============================================================
+8. SCORING
+============================================================
+
+A speaking-match score from 0 to 100: the share of the passage that came
+through correctly.
+
+    score = 100 x (1 - weighted errors / words in the target)
+
+    Missing word      1.0
+    Mismatched word   1.0
+    Extra word        0.5
+
+    Clamped to the range 0-100.
+
+An extra word weighs less than a missing one. Adding a word still shows
+the learner produced the target text; dropping one means part of it was
+never said at all.
+
+The error counts come from the word-level alignment described in section
+19, so each one corresponds to exactly one alignment operation.
+
+
+8.1 Why not fixed penalties
+
+Revision 1 specified a fixed scheme: start at 100, subtract 10 per
+missing or mismatched word and 5 per extra word. That works for single
+sentences and fails badly for paragraphs.
+
+    A forty-word paragraph read with ten slips scores zero under fixed
+    penalties. The learner got three-quarters of it right. Zero tells
+    them nothing, and is simply not true.
+
+Fixed penalties also make the same mistake cost the same regardless of
+how much was being read, so a slip in a three-word sentence and a slip
+in a fifty-word paragraph are treated as equally serious. They are not.
+
+Normalizing fixes both, and gives the number a meaning a learner can
+hold on to: roughly the percentage of the passage they said correctly.
+Scores become comparable across levels.
+
+This is the normalized similarity score that revision 1 already listed
+as the acceptable alternative, so it is a change of default rather than
+a departure from the original design.
+
+
+8.2 Naming
+
+The score is described as:
+
+    Speaking Match
+
+rather than claiming it is a scientifically validated pronunciation
+score. It measures how closely the recognizer's transcript matches the
+target text, which is a useful practice signal but not an assessment of
+pronunciation quality.
+
+
+============================================================
+9. PRACTICE CONTENT
+============================================================
+
+30 items, 10 at each level, chosen to exercise the sounds the coaching
+engine knows about (TH, R, V, W, L) and to grow in length with the level.
+
+Beginner is single sentences. Intermediate and Advanced are paragraphs,
+because reading connected speech — carrying intonation across a sentence
+boundary, breathing in sensible places, not resetting to a flat pitch
+after every full stop — is a different skill from reading one sentence
+in isolation.
+
+    Level          Form                    Typical length
+
+    Beginner       one sentence            4-7 words
+    Intermediate   two or three sentences  20-25 words
+    Advanced       three or four sentences 30-40 words
+
+Beginner examples:
+
+    "I like coffee."
+    "My name is John."
+    "I live in Chicago."
+
+Intermediate example:
+
+    "I usually go to work by train. The journey takes about forty
+     minutes, so I read a book on the way."
+
+Advanced example:
+
+    "I have been working on this project for several months. Although
+     the results are encouraging, there is still a great deal to do
+     before we can publish anything. I would rather take the extra
+     time and get it right."
+
+
+============================================================
+10. DIFFICULTY LEVELS
+============================================================
+
+    Beginner        Short, everyday sentences
+    Intermediate    Short paragraphs of two or three sentences
+    Advanced        Longer paragraphs and complex structures
+
+The level can be changed at any time from the practice page. Switching
+level returns to the first item at the new level.
+
+
+============================================================
+11. PROGRESS
+============================================================
+
+Basic statistics:
+
+    Practice Sessions: 12
+    Average Match: 86%
+    Best Score: 96%
+    Last Session: 81%
+
+Example history:
+
+    Today       I like coffee.              92%
+    Today       My name is John.            86%
+    Yesterday   I live in Chicago.          79%
+    Yesterday   The weather is nice today.  84%
+
+One record is stored per analyzed attempt. Records are kept in
+localStorage under the key `speakbetter.progress.v1`, newest first,
+capped at 200 entries.
+
+
+============================================================
+12. FUNCTIONAL REQUIREMENTS
+============================================================
+
+FR-1 — Select Exercise
+The user shall be able to select a difficulty level.
+
+FR-2 — Display Exercise
+The system shall display an English sentence.
+
+FR-3 — Play Correct Pronunciation
+The user shall be able to hear the target sentence using text-to-speech,
+at normal or reduced speed.
+
+FR-4 — Record Speech
+The browser shall record the user's microphone input.
+
+FR-5 — Submit Recording
+The recording shall be submitted for analysis when the user stops
+recording.
+
+FR-6 — Speech-to-Text
+The browser shall transcribe the recording using the Web Speech
+Recognition API. No audio is transmitted by the application.
+
+FR-7 — Compare Speech
+The system shall compare recognized text against the target sentence.
+
+FR-8 — Generate Score
+The system shall calculate a speaking-match score.
+
+FR-9 — Identify Problems
+The system shall identify missing, extra, and significantly different
+words.
+
+FR-10 — Provide Coaching
+The system shall display predefined coaching information for supported
+pronunciation problems.
+
+FR-11 — Retry
+The user shall be able to record the sentence again.
+
+FR-12 — Progress
+The system shall maintain basic practice history.
+
+FR-13 — Replay Own Recording
+The user shall be able to play back their own recording alongside the
+model pronunciation.
+
+FR-14 — Custom Sentence or Paragraph
+The user shall be able to enter text of their own, up to 400 characters,
+and practice it with the same analysis, scoring, and coaching as a
+library item. Recently used entries shall be offered for reuse.
+
+The entry point shall be reachable from the home page, from the practice
+page before recording, and from the result card afterwards — wanting to
+practice your own words is as likely after seeing a score as before.
+
+FR-15 — Improvement Suggestions
+The system shall offer at least one suggestion for what to work on next
+after every attempt, including attempts that scored perfectly.
+
+
+============================================================
+13. NON-FUNCTIONAL REQUIREMENTS
+============================================================
+
+Performance:
+Analysis is local text processing and completes in well under a second
+once the transcript is available. The perceived wait is the browser's
+recognition step, typically one to two seconds after the user stops
+speaking. There is no server to wake and no cold start.
+
+Usability:
+The user should understand what to do without extensive instructions.
+
+Privacy:
+Recorded audio is never uploaded by the application. It is held in
+browser memory as a Blob, used only for the timer, the level meter, and
+optional self-playback, and released with URL.revokeObjectURL as soon as
+the user retries or moves on.
+
+Actual flow:
+
+    Record
+      ↓
+    Transcribe in browser
+      ↓
+    Analyze in browser
+      ↓
+    Discard audio
+
+One caveat is stated openly in the README: Chrome's implementation of
+the Web Speech Recognition API sends audio to Google's speech service to
+transcribe it. That is browser behaviour rather than application
+behaviour, but "runs in your browser" does not mean "audio never leaves
+your device."
+
+Reliability:
+The application handles, each with a specific message:
+
+- microphone permission denied
+- no microphone present
+- empty recording
+- speech not recognized
+- network unavailable
+- speech service failure
+- browser without speech recognition support
+
+If recognition neither completes nor reports an error, the application
+settles after a five-second grace period rather than hanging.
+
+Storage failures are non-fatal. In private browsing the application
+still works; it simply does not remember progress.
+
+
+============================================================
+14. SOFTWARE DESIGN
+============================================================
+
+14.1 High-Level Architecture
+
+The entire application is a static site. There is no server component,
+no database, and no API key.
+
+    ┌───────────────────────────────────────────────────────┐
+    │                       Browser                         │
+    │                                                       │
+    │  React + TypeScript                                   │
+    │                                                       │
+    │  ┌────────────┐        ┌──────────────────┐           │
+    │  │ Practice   │        │    Recording     │           │
+    │  │ UI         │        │    Controller    │           │
+    │  └────────────┘        └────────┬─────────┘           │
+    │                                 │                     │
+    │                    ┌────────────┴────────────┐        │
+    │                    ▼                         ▼        │
+    │           ┌────────────────┐      ┌──────────────────┐│
+    │           │ MediaRecorder  │      │ Speech           ││
+    │           │ timer, level,  │      │ Recognition      ││
+    │           │ playback       │      │ (Web Speech API) ││
+    │           └────────────────┘      └────────┬─────────┘│
+    │                                            │          │
+    │                                   transcript          │
+    │                                            ▼          │
+    │                            ┌──────────────────────┐   │
+    │                            │  Analysis Service    │   │
+    │                            │  services/api.ts     │   │
+    │                            └──────────┬───────────┘   │
+    │                                       ▼               │
+    │                            ┌──────────────────────┐   │
+    │                            │ Text Comparison      │   │
+    │                            │ Engine               │   │
+    │                            └──────────┬───────────┘   │
+    │                                       ▼               │
+    │                            ┌──────────────────────┐   │
+    │                            │ Coaching Engine      │   │
+    │                            └──────────┬───────────┘   │
+    │                                       ▼               │
+    │                            ┌──────────────────────┐   │
+    │                            │ Result UI            │   │
+    │                            │ localStorage progress│   │
+    │                            └──────────────────────┘   │
+    └───────────────────────────────────────────────────────┘
+
+14.2 Layering
+
+    UI layer          components/, pages/
+                      React only, no analysis logic
+
+    Service layer     services/api.ts, tts.ts, progress.ts
+                      hooks/useSpeechRecorder.ts
+                      everything that touches a browser API
+
+    Engine layer      engine/normalize.ts, comparison.ts, coaching.ts
+                      pure functions, no I/O, fully unit-tested
+
+The engine layer has no browser dependency at all. It is plain input to
+plain output, which is why it can be tested exhaustively without a
+browser, a microphone, or a mock.
+
+
+============================================================
+15. TECHNOLOGY STACK
+============================================================
+
+Application:
+
+    React 18
+    TypeScript
+    Vite 6
+    Vitest
+
+Browser APIs:
+
+    MediaRecorder API           audio capture
+    Web Speech Recognition API  speech-to-text
+    SpeechSynthesis API         text-to-speech
+    Web Audio AnalyserNode      input level meter
+    localStorage                progress
+
+Data:
+
+    TypeScript modules for exercises and coaching rules
+    localStorage for progress
+
+Runtime dependencies:
+
+    react, react-dom
+
+    No UI framework, no state library, no HTTP client.
+
+Deployment:
+
+    Static hosting (Netlify, Vercel, GitHub Pages, Cloudflare Pages)
+    HTTPS required — browsers only grant microphone access on a
+    secure origin. localhost is exempt for development.
+
+
+============================================================
+16. SOFTWARE STRUCTURE
+============================================================
+
+    speakbetter/
+    ├── index.html
+    ├── vite.config.ts
+    ├── package.json
+    │
+    └── src/
+        ├── components/
+        │   ├── Header.tsx             brand bar, "3 / 10" counter
+        │   ├── ExerciseCard.tsx       sentence, Listen / Slowly
+        │   ├── RecordButton.tsx       record button, live panel
+        │   ├── ResultCard.tsx         score, words, feedback, tips,
+        │   │                          suggestions, compare block
+        │   ├── WordResult.tsx         one word with its ✓ / ⚠ mark
+        │   ├── CustomSentenceCard.tsx learner-typed sentence input
+        │   └── ProgressCard.tsx       statistics and history
+        │
+        ├── pages/
+        │   ├── Home.tsx
+        │   └── Practice.tsx
+        │
+        ├── engine/                    pure, no I/O
+        │   ├── normalize.ts           normalization, tokenization
+        │   ├── comparison.ts          alignment, scoring
+        │   ├── coaching.ts            rule lookup, feedback text
+        │   ├── suggestions.ts         what to work on next
+        │   ├── comparison.test.ts
+        │   ├── suggestions.test.ts
+        │   └── documented-examples.test.ts
+        │                              asserts the examples printed in
+        │                              sections 6, 18 and 19 of this
+        │                              document, so they cannot go stale
+        │
+        ├── services/
+        │   ├── api.ts                 analyzeSpeech(), analyzeText(),
+        │   │                          fetchExercises()
+        │   ├── tts.ts                 text-to-speech
+        │   ├── progress.ts            localStorage history and stats
+        │   ├── customSentences.ts     recent learner-typed sentences
+        │   ├── progress.test.ts
+        │   └── speech.d.ts            Web Speech API typings
+        │
+        ├── hooks/
+        │   └── useSpeechRecorder.ts   MediaRecorder + recognition
+        │
+        ├── data/
+        │   ├── exercises.ts           30 sentences
+        │   └── pronunciationRules.ts  coaching rules
+        │
+        ├── types.ts
+        ├── App.tsx
+        ├── main.tsx
+        └── styles.css
+
+Routing is hash-based (`#/` and `#/practice`) so the browser back button
+works and any static host can serve the application without rewrite
+rules.
+
+
+============================================================
+17. ARCHITECTURE DECISION: NO BACKEND
+============================================================
+
+Revision 1 of this document specified a FastAPI backend containing a
+Practice API, a Speech Analysis Service, a Text Comparison Engine, and a
+Coaching Engine. That backend has been removed. This section records why.
+
+17.1 What the backend actually did
+
+    Practice API            Served a static JSON file.
+                            Needs no server.
+
+    Text Comparison Engine  Normalize, tokenize, align, score.
+                            Pure text processing. Needs no server.
+
+    Coaching Engine         A dictionary lookup.
+                            Needs no server.
+
+    Speech-to-Text          The one component that could not run
+                            as client-side application logic.
+
+Three of the four components were already server-independent. The entire
+backend existed to serve one endpoint, and the only part of that endpoint
+requiring a server was transcription.
+
+17.2 Why transcription no longer requires one
+
+The Web Speech Recognition API performs recognition in the browser at no
+cost and with no key. Once transcription moves to the client, nothing is
+left for a server to do.
+
+17.3 Consequences
+
+Gained:
+
+    No cold starts. Free backend tiers sleep after inactivity and take
+    30-60 seconds to wake. A reviewer opening the public URL for the
+    first time would have hit that delay on their first recording,
+    directly conflicting with the responsiveness goal in section 13.
+
+    No API key. A speech API key cannot be shipped safely in a static
+    frontend; it would be readable by anyone and billable to us. Holding
+    that key was the strongest remaining argument for a server, and it
+    disappears with browser recognition.
+
+    Stronger privacy. Audio is never uploaded by the application.
+
+    Free hosting, and no operational burden.
+
+    Simpler deployment: one artifact instead of two.
+
+Lost:
+
+    Browser support. Recognition works in Chrome and Edge, partially in
+    Safari, and not in Firefox. The application detects this on load,
+    explains it, and leaves the sentences and Listen button working.
+
+    Server-side accuracy. A dedicated speech API would transcribe more
+    accurately than the browser, particularly for strong accents.
+
+    An internet connection is still required, because browser
+    recognition is itself network-backed.
+
+17.4 Keeping the option open
+
+`analyzeSpeech()` in `services/api.ts` preserves the request and response
+shape of the original `POST /api/analyze` endpoint and is the only place
+in the application that knows where analysis happens. Reintroducing a
+server later means changing that one function; no component, page, or
+engine module would need to change.
+
+This is the reason the engine layer is kept free of browser APIs: those
+same three modules would port to a Python or Node service directly.
+
+
+============================================================
+18. MODULE INTERFACES
+============================================================
+
+The HTTP API of revision 1 is now a module interface. The data shapes are
+unchanged, which is what keeps section 17.4 possible.
+
+Get exercises — replaces `GET /api/exercises?level=beginner`:
+
+    fetchExercises(level: Level): Exercise[]
+
+Example element:
+
+    {
+      "id": 12,
+      "text": "I would like to order a cup of coffee.",
+      "level": "intermediate"
+    }
+
+
+Analyze speech — replaces `POST /api/analyze`:
+
+    analyzeSpeech(
+      exerciseId: number,
+      recognized: string,
+      meta?: SpeechMeta,
+    ): AnalysisResult
+
+    Throws AnalysisError for an unknown exercise or an empty transcript.
+
+Analyze any text — used for learner-supplied sentences:
+
+    analyzeText(
+      expected: string,
+      recognized: string,
+      meta?: SpeechMeta,
+    ): AnalysisResult
+
+    analyzeSpeech looks the sentence up by id and delegates here, so
+    both paths score identically.
+
+Validate a learner-supplied sentence:
+
+    validateCustomSentence(input: string):
+      { ok: true, text: string } | { ok: false, error: string }
+
+    Trims and collapses whitespace. Rejects an empty sentence, one with
+    no letters, or one longer than 200 characters.
+
+Optional recording signals:
+
+    interface SpeechMeta {
+      durationMs?: number   // how long the learner recorded
+      confidence?: number   // recognizer confidence, 0 to 1
+    }
+
+    Both are optional because the browser does not always report them.
+    A confidence of 0 means "not reported" and is ignored rather than
+    treated as a poor result.
+
+The examples below are verbatim output from the implementation.
+
+Example result — analyzeSpeech(1, "I like coffee"):
+
+    {
+      "score": 100,
+      "expected": "I like coffee.",
+      "recognized": "I like coffee",
+      "words": [
+        { "word": "i",      "status": "correct" },
+        { "word": "like",   "status": "correct" },
+        { "word": "coffee", "status": "correct" }
+      ],
+      "feedback": ["Every word matched. Excellent speaking!"],
+      "tips": [],
+      "suggestions": [
+        {
+          "kind": "challenge",
+          "title": "Ready for something harder",
+          "detail": "This sentence is not challenging you any more.
+                     Move up a level, or type a sentence of your own
+                     that you find difficult."
+        }
+      ]
+    }
+
+Note that `tips` is empty but `suggestions` is not. That is the point of
+FR-15: a perfect score still leaves the learner with a next step.
+
+Note that `expected` is the original sentence with its punctuation,
+while `words` holds normalized tokens. The result carries both the text
+to display and the tokens that were actually compared.
+
+
+Problem example — analyzeText("I think this is a good idea.",
+                              "I tink this is a good idea"):
+
+    {
+      "score": 86,
+      "expected": "I think this is a good idea.",
+      "recognized": "I tink this is a good idea",
+      "words": [
+        { "word": "i",     "status": "correct" },
+        {
+          "word": "think",
+          "spoken": "tink",
+          "status": "problem",
+          "sound": "TH",
+          "tip": "Put your tongue lightly between your teeth and let
+                  air flow through. Do not say \"tink\" or \"sink\"."
+        },
+        { "word": "this",  "status": "correct" },
+        { "word": "is",    "status": "correct" },
+        { "word": "a",     "status": "correct" },
+        { "word": "good",  "status": "correct" },
+        { "word": "idea",  "status": "correct" }
+      ],
+      "feedback": [
+        "Your speech was slightly different around \"think\" —
+         it sounded like \"tink\"."
+      ],
+      "tips": [
+        {
+          "word": "think",
+          "sound": "TH",
+          "tip": "Put your tongue lightly between your teeth and let
+                  air flow through. Do not say \"tink\" or \"sink\"."
+        }
+      ]
+    }
+
+
+Word status values:
+
+    correct     spoken as written
+    problem     recognized as a similar but different word
+    missing     in the target sentence but never spoken
+    extra       spoken but not in the target sentence
+
+
+============================================================
+19. TEXT COMPARISON ENGINE
+============================================================
+
+19.1 Normalization
+
+Both the target sentence and the transcript pass through an identical
+pipeline, so any difference that survives is a real speaking difference
+rather than an artifact of transcription style.
+
+    lowercase
+    fold curly quotes and unicode dashes
+    expand contractions       "I'd"  → "i would"
+    split hyphens             "well-known" → "well known"
+    strip punctuation
+    spell out digits          "3"    → "three"
+
+Example:
+
+    "I think, this is a good idea!"
+
+becomes:
+
+    "i think this is a good idea"
+
+Tokenize:
+
+    ["i", "think", "this", "is", "a", "good", "idea"]
+
+Contraction expansion and digit spelling matter more than they look.
+A recognizer may return "I would" where the learner said "I'd", or "3"
+where the sentence reads "three". Without normalization each of those
+would be reported as a mistake the learner did not make.
+
+19.2 Alignment
+
+Word-level Levenshtein distance with a backtrace. The dynamic
+programming table is filled with these costs, then walked backwards to
+recover the individual operations:
+
+    delete   (missing word)      1.0
+    insert   (extra word)        1.0
+    substitute, similar words    1.0
+    substitute, different words  1.6
+
+Costs are stored as integers scaled by ten, so the backtrace can compare
+table entries with exact equality rather than a floating-point tolerance.
+
+Two words count as similar when their character-level edit distance
+gives a similarity of 0.5 or more:
+
+    similarity(a, b) = 1 - editDistance(a, b) / max(len(a), len(b))
+
+Both substitution costs stay below delete + insert (2.0), so a near-miss
+aligns as one imperfect word rather than a dropped word plus an added
+one. This is what makes "think" heard as "tink" read as a single
+mispronunciation:
+
+    Expected:
+    I think this is a good idea
+
+    Actual:
+    I tink this is a good idea
+
+    Result:
+
+    i       ✓
+    think   ⚠   heard as "tink"
+    this    ✓
+    is      ✓
+    a       ✓
+    good    ✓
+    idea    ✓
+
+    Score: 90
+
+The alignment is order-preserving: reading the operations left to right
+reconstructs both sequences exactly, which is asserted by a unit test.
+
+19.3 Scoring
+
+Each alignment operation maps to one penalty, as listed in section 8.
+
+
+============================================================
+20. COACHING AND SUGGESTION ENGINES
+============================================================
+
+Rules live in `data/pronunciationRules.ts`. The engine performs a lookup
+in two layers, checked in order.
+
+20.1 Word rules
+
+A tip written for one specific word. Around 38 entries covering TH, R,
+V, W, L, SH, ZH and multi-syllable words.
+
+    {
+      "think": {
+        "sound": "TH",
+        "tip": "Put your tongue lightly between your teeth and let air
+                flow through."
+      },
+      "three": {
+        "sound": "TH",
+        "tip": "Put your tongue lightly between your teeth, then add
+                the R."
+      },
+      "right": {
+        "sound": "R",
+        "tip": "Raise your tongue without touching the roof of your
+                mouth."
+      }
+    }
+
+20.2 Sound rules
+
+Patterns matched against any word with no hand-written entry, so
+coverage is not limited to the list above.
+
+    TH   /th/
+    R    /^r|rr/
+    V    /v/
+    W    /^w/
+    SH   /tion$|sh/
+    L    /^l|ll/
+    ED   /ed$/
+    S    /s$/
+
+20.3 Selection
+
+Tips are collected for words marked `problem` or `missing`, one per
+distinct sound, to a maximum of three.
+
+
+20.4 Suggestion engine
+
+The coaching engine explains what went wrong. The suggestion engine
+answers a different question: what should the learner work on next?
+
+It runs on every attempt, including a perfect one, so a score of 100
+still comes with something to try. Suggestions are built only from
+signals that were actually measured — never from a guess about
+pronunciation quality.
+
+    Signal                Source                    Suggestion
+
+    Recognizer            SpeechRecognition          clarity
+    confidence            result confidence
+
+    Speaking pace         recording duration and     pace
+                          recognized word count
+
+    Rule-backed word      the sentence text and      sound
+    spoken correctly      the coaching rules
+
+    Long sentence         word count and score       fluency
+    read well
+
+    High score            score                      challenge
+
+At most three are shown, and at least one always is.
+
+
+20.5 Measuring pace honestly
+
+Pace is reported in words per minute, computed from the recording
+duration. Two corrections keep it from giving bad advice:
+
+    Overhead     A recording includes the moment between clicking
+                 Record and starting to speak, plus the silence the
+                 recognizer waits through before deciding the sentence
+                 has ended — roughly a second in Chrome. A fixed
+                 1200 ms allowance is subtracted before the rate is
+                 computed.
+
+    Short        Below six words the overhead dominates whatever is
+    sentences    left, and the number says more about reaction time
+                 than about speaking. Short sentences get no pace
+                 advice at all.
+
+Thresholds are deliberately wide — below 75 wpm or above 190 wpm — so
+only clear extremes are remarked on. Anything in between passes without
+comment rather than inventing a criticism.
+
+Without these two corrections, "I like coffee" spoken normally in three
+seconds computes as 60 wpm and would be wrongly flagged as too slow.
+
+
+No LLM is required for any of this.
+
+
+============================================================
+21. COMPLETE DATA FLOW
+============================================================
+
+    User
+      │
+      │ clicks Record
+      ▼
+    getUserMedia — one microphone permission, two consumers
+      │
+      ├──────────────────────────┐
+      ▼                          ▼
+    MediaRecorder            SpeechRecognition
+      │                          │
+      │ Blob                     │ transcript + confidence
+      │ (timer, level meter,     │
+      │  never sent)             │
+      │                          ▼
+      │                    analyzeSpeech() / analyzeText()
+      │                          │
+      │                          ▼
+      │                    normalize + tokenize
+      │                          │
+      │                          ▼
+      │                    Comparison Engine
+      │                          │
+      │                          ├── word alignment
+      │                          ├── score
+      │                          └── problem detection
+      │                          │
+      │                          ├──────────────┐
+      │                          ▼              ▼
+      │                    Coaching Engine   Suggestion Engine
+      │                    (what went        (what to work on
+      │                     wrong)            next — always
+      │                          │            returns something)
+      │                          │              │
+      │                          └──────┬───────┘
+      │                                 ▼
+      │                          AnalysisResult
+      │                                 │
+      │                                 ▼
+      └──────────────────────────► Result displayed
+         object URL, for the            │
+         Compare block                  ▼
+                                 localStorage progress
+                                        │
+                                        ▼
+                                 audio Blob released on
+                                 retry or next sentence
+
+
+============================================================
+22. IMPLEMENTATION PLAN
+============================================================
+
+DAY 1
+
+Morning:
+- Create React/Vite/TypeScript project
+- Build Home page
+- Build Practice page
+- Add exercise data
+- Add microphone recording
+
+Afternoon:
+- Implement text normalization
+- Implement word alignment
+- Implement scoring
+- Unit-test the engine
+
+Evening:
+- Add browser speech recognition
+- Add text-to-speech
+- Complete Record → Analyze → Result flow
+
+
+DAY 2
+
+Morning:
+- Add word highlighting
+- Add coaching rules
+- Add retry
+- Add progress tracking
+
+Afternoon:
+- Improve UI
+- Handle every error case in section 13
+- Test microphone and audio behaviour
+- Test different accents and sentences
+
+Evening:
+- Deploy
+- Write README
+- Record a short demo
+- Clean up code
+
+
+REVISION 3 ADDITIONS
+
+- Play back the learner's own recording (FR-13)
+- Practice a learner-typed sentence, with recent ones remembered (FR-14)
+- Suggestions after every attempt, including perfect ones (FR-15)
+
+
+REVISION 4 ADDITIONS
+
+- Paragraphs for Intermediate and Advanced
+- Recording budget scaled to passage length
+- Continuous recognition for multi-sentence passages
+- Normalized scoring, so a long passage is judged fairly
+- Custom entry reachable from the home page and the result card
+
+
+Status:
+
+    Implemented and building clean. 86 unit, render, and documented-
+    example tests pass.
+
+    Interactive audio behaviour — microphone permission, recording, and
+    live recognition — requires manual verification in a browser, since
+    it depends on real hardware and a real speech service.
+
+    Remaining: public deployment and the recorded demo.
+
+
+============================================================
+23. MVP SCOPE
+============================================================
+
+MUST HAVE:
+
+- Web UI                    done
+- 20-30 exercises           done — 30 (10 sentences, 20 paragraphs)
+- Microphone recording      done
+- Speech-to-text            done — browser
+- Word comparison           done
+- Score                     done
+- Feedback                  done
+- Text-to-speech            done — normal and slow
+- Retry                     done
+- Basic progress            done
+- Public deployment         outstanding
+
+
+ADDED IN REVISION 3:
+
+- Own-recording playback    done
+- Custom sentences          done
+- Improvement suggestions   done
+
+
+NICE TO HAVE ONLY IF TIME REMAINS:
+
+- User accounts
+- Database
+- Advanced pronunciation analysis
+- Conversation mode
+- AI-generated exercises
+- LLM coaching
+- Detailed phoneme analysis
+
+
+DO NOT allow nice-to-have features to threaten the two-day deadline.
+
+
+============================================================
+24. COLLEGE APPLICATION DEMONSTRATION
+============================================================
+
+The final demonstration should take approximately two minutes, in
+Chrome or Edge.
+
+Demonstrate:
+
+1. Choose Intermediate.
+2. Display a sentence.
+3. Click Listen.
+4. Record yourself, deliberately dropping or mispronouncing one word.
+5. Receive a score.
+6. Show the highlighted problem word.
+7. Read the coaching tip.
+8. Click Try Again.
+9. Show the improved score and the "▲ from last try" indicator.
+10. Return home and show progress.
+
+The project story is:
+
+    The application listens to a human being,
+    analyzes the speech,
+    identifies a problem,
+    provides feedback,
+    and measures improvement.
+
+This is a complete interactive speech-learning application rather than
+simply a webpage that displays an AI response.
+
+
+============================================================
+25. DESIGN PRINCIPLE
+============================================================
+
+Keep the project small enough to finish in two days.
+
+The objective is NOT to build a production-level pronunciation
+assessment system.
+
+The objective is to build a polished, working demonstration that
+combines:
+
+    Browser audio recording
+        +
+    Speech recognition
+        +
+    Text analysis
+        +
+    Automated feedback
+        +
+    Text-to-speech
+        +
+    Interactive retry
+        +
+    Progress tracking
+
+The application should be something a college admissions reviewer can
+open through a public URL and try immediately.
+
+Removing the backend serves this principle directly. It deleted an
+entire deployment target, a runtime cost, a secret to manage, and a
+cold-start delay on the reviewer's first click — while removing nothing
+the user can see.

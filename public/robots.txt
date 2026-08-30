@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# The Sitemap line is appended at build time by scripts/postbuild.mjs,
+# which knows the deployed domain.

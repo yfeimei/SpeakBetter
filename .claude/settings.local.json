@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($n = Get-Command node -ErrorAction SilentlyContinue; if \\($n\\) { \"node: \" + \\(node --version\\) + \" at \" + $n.Source } else { \"node: NOT FOUND\" }; $p = Get-Command python -ErrorAction SilentlyContinue; if \\($p\\) { \"python: \" + \\(python --version\\) + \" at \" + $p.Source } else { \"python: NOT FOUND\" })",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; \"node: \" + \\(node --version\\); \"npm: \" + \\(npm --version\\))",
+      "PowerShell(npm install *)",
+      "PowerShell(npm test *)",
+      "PowerShell(npm run *)",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; npx vitest run src/engine/_docexamples.test.ts 2>&1 | Select-Object -First 120)",
+      "PowerShell(npm *)",
+      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" -ArgumentList \"http://localhost:5173/\")",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; npx tsc --noEmit 2>&1 | Select-Object -First 30; \"--- exit $LASTEXITCODE ---\")",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; npx tsc --noEmit 2>&1 | Select-Object -First 20; \"--- tsc exit $LASTEXITCODE ---\")"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "SpeakBetter — Your Personal English Coach",
+  "short_name": "SpeakBetter",
+  "description": "Practise speaking English with instant word-by-word feedback.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1020",
+  "theme_color": "#0f1020",
+  "orientation": "portrait-primary",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

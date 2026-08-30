@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.log
+
+# .env is committed on purpose: it holds only the public site URL, no secrets.
+# Local overrides are not.
+.env.local
+.env.*.local
