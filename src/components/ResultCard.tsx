@@ -1,5 +1,19 @@
+import { useEffect, useRef } from 'react'
+import { isMobileDevice } from '../services/platform'
 import type { AnalysisResult } from '../types'
 import { WordResult } from './WordResult'
+
+/**
+ * Starting volume for playing the learner's own recording back, 0 to 1.
+ *
+ * Has to be applied through a ref: `volume` is a property of the media element
+ * rather than an attribute, so React will not set it from JSX. Left alone it
+ * defaults to 1, which is why this played at full volume.
+ *
+ * Separate from the model voice's volume on purpose — one is synthesized at a
+ * known level, the other is whatever the learner's microphone captured.
+ */
+const PLAYBACK_VOLUME = 0.5
 
 interface ResultCardProps {
   result: AnalysisResult
@@ -32,6 +46,13 @@ export function ResultCard({
 }: ResultCardProps) {
   const band = scoreBand(result.score)
   const improvement = previousScore === null ? null : result.score - previousScore
+
+  // Re-applied per recording: a new attempt swaps the src, and the element is
+  // remounted whenever the result card comes and goes between attempts.
+  const audioRef = useRef<HTMLAudioElement>(null)
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = PLAYBACK_VOLUME
+  }, [audioUrl])
 
   return (
     <section className="card result">
@@ -110,11 +131,27 @@ export function ResultCard({
         <div className="compare__row">
           <span className="compare__label">You</span>
           {audioUrl ? (
-            <audio className="compare__audio" src={audioUrl} controls preload="metadata">
+            <audio
+              ref={audioRef}
+              className="compare__audio"
+              src={audioUrl}
+              controls
+              preload="metadata"
+            >
               Your browser cannot play the recording back.
             </audio>
+          ) : isMobileDevice() ? (
+            // Not a missing browser feature: on a phone the recorder and the
+            // speech recognizer cannot share the microphone, and recognition
+            // wins because the score depends on it. See `shouldCaptureAudio`.
+            <span className="compare__missing">
+              Hearing your own attempt back only works on a computer &mdash; on a phone the
+              microphone is needed for the scoring.
+            </span>
           ) : (
-            <span className="compare__missing">Recording not available in this browser.</span>
+            <span className="compare__missing">
+              Your recording could not be saved, so there is nothing to play back.
+            </span>
           )}
         </div>
       </div>

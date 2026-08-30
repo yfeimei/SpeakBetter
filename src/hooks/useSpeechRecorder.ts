@@ -11,22 +11,31 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { tokenize } from '../engine/normalize'
 import { hasRecognitionApi, isMobileDevice } from '../services/platform'
 import type { SpeechMeta } from '../types'
 
 /** Shortest recording budget, used for single sentences. */
 export const MIN_RECORDING_MS = 15_000
 /** Hard ceiling, so a stuck session cannot run forever (section 5). */
-export const MAX_RECORDING_MS = 60_000
+export const MAX_RECORDING_MS = 180_000
 
-/** Seconds of speaking time allowed per word of the target text. */
-const MS_PER_WORD = 700
+/**
+ * Speaking time allowed per word of the target text.
+ *
+ * Set for a learner reading aloud, not a native speaker at conversational
+ * pace: 1.2 s a word is about 50 words a minute, which leaves room to hesitate,
+ * start a word again, or lose your place — the things this app exists to help
+ * with. Timing someone out mid-sentence teaches them nothing.
+ */
+const MS_PER_WORD = 1_200
 /** Extra time for getting started and finishing off. */
-const RECORDING_LEAD_MS = 4_000
+const RECORDING_LEAD_MS = 6_000
 
 /**
  * How long to allow for reading a given text aloud. A single sentence gets the
- * 15-second minimum; a fifty-word paragraph gets closer to forty seconds.
+ * 15-second minimum; a fifty-word paragraph gets a little over a minute; and
+ * anything from roughly 145 words up gets the full three minutes.
  */
 export function recordingBudgetMs(wordCount: number): number {
   const budget = RECORDING_LEAD_MS + wordCount * MS_PER_WORD
@@ -113,6 +122,51 @@ export interface RecognitionResultLike {
   readonly [index: number]: { transcript: string; confidence: number }
 }
 
+/** Whether every word of `shorter` opens `longer`, comparing like for like. */
+function isPrefixOf(shorter: string[], longer: string[]): boolean {
+  return shorter.length <= longer.length && shorter.every((word, i) => word === longer[i])
+}
+
+/** Which side of a merge the surviving text came from, so confidence can follow it. */
+export type TranscriptMergeKeep = 'both' | 'committed' | 'incoming'
+
+export interface TranscriptMerge {
+  text: string
+  keep: TranscriptMergeKeep
+}
+
+/**
+ * Join two pieces of transcript, suppressing a restatement of what we already
+ * have rather than concatenating it.
+ *
+ * Android Chrome does not just re-deliver a result list — it emits a run of
+ * *final* results that each restate the utterance from the beginning: "I",
+ * then "I usually", then "I usually go". Concatenating those gives the learner
+ * "I I usually I usually go", and the comparison engine scores every restated
+ * word as an extra one.
+ *
+ * Whichever side is the longer restatement wins; anything else is a genuine
+ * continuation and is appended. The test is deliberately limited to whole
+ * prefixes, because that is the exact shape the recognizer produces. A looser
+ * rule — collapsing any overlap between the end of one piece and the start of
+ * the next — would eat real repetition, and "I go to work, work is fun" is
+ * something a learner may well say.
+ */
+export function mergeTranscripts(committed: string, incoming: string): TranscriptMerge {
+  const incomingWords = tokenize(incoming)
+  if (incomingWords.length === 0) return { text: committed, keep: 'committed' }
+
+  const committedWords = tokenize(committed)
+  if (committedWords.length === 0) return { text: incoming, keep: 'incoming' }
+
+  // Equal lists satisfy both tests; taking `incoming` first makes a plain
+  // re-delivery a no-op.
+  if (isPrefixOf(committedWords, incomingWords)) return { text: incoming, keep: 'incoming' }
+  if (isPrefixOf(incomingWords, committedWords)) return { text: committed, keep: 'committed' }
+
+  return { text: `${committed.trim()} ${incoming.trim()}`, keep: 'both' }
+}
+
 /**
  * Build a session's transcript from the recognizer's cumulative result list.
  *
@@ -122,6 +176,10 @@ export interface RecognitionResultLike {
  * whole sentences, which the comparison engine sees as a run of extra words.
  * Reading everything makes the operation idempotent, so a re-delivery is
  * harmless.
+ *
+ * Reading everything is not enough on its own, though: the list itself can
+ * hold the same utterance several times over, growing a word at a time, so the
+ * results are folded together with `mergeTranscripts` rather than joined.
  */
 export function collectSessionTranscript(results: ArrayLike<RecognitionResultLike>): {
   final: string
@@ -130,7 +188,7 @@ export function collectSessionTranscript(results: ArrayLike<RecognitionResultLik
 } {
   let final = ''
   let interim = ''
-  const confidences: number[] = []
+  let confidences: number[] = []
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i]
@@ -138,14 +196,22 @@ export function collectSessionTranscript(results: ArrayLike<RecognitionResultLik
     if (!alternative) continue
 
     if (result.isFinal) {
-      final += `${alternative.transcript} `
-      confidences.push(alternative.confidence)
+      const merged = mergeTranscripts(final, alternative.transcript)
+      final = merged.text
+
+      if (merged.keep === 'incoming') {
+        // A restatement replaces the run it restates, and so does its score.
+        confidences = [alternative.confidence]
+      } else if (merged.keep === 'both') {
+        confidences = [...confidences, alternative.confidence]
+      }
     } else {
-      interim += alternative.transcript
+      interim = mergeTranscripts(interim, alternative.transcript).text
     }
   }
 
-  return { final, interim, confidences }
+  // The trailing space keeps this safe to concatenate; `finish` collapses it.
+  return { final: final === '' ? '' : `${final} `, interim, confidences }
 }
 
 function createRecognition(continuous: boolean): SpeechRecognition | null {
@@ -310,16 +376,33 @@ export function useSpeechRecorder(): SpeechRecorder {
     setLevel(0)
   }, [])
 
-  /** Fold the running session's text into the committed total. */
+  /**
+   * Fold the running session's text into the committed total.
+   *
+   * Merged rather than appended for the same reason results are within a
+   * session: a restarted recognizer on Android sometimes opens by restating
+   * the passage so far instead of carrying on from where it stopped.
+   */
   const commitSession = useCallback(() => {
-    if (sessionTranscriptRef.current) {
-      committedTranscriptRef.current += sessionTranscriptRef.current
-      sessionTranscriptRef.current = ''
-    }
-    if (sessionConfidencesRef.current.length > 0) {
-      committedConfidencesRef.current.push(...sessionConfidencesRef.current)
+    if (!sessionTranscriptRef.current) {
       sessionConfidencesRef.current = []
+      return
     }
+
+    const merged = mergeTranscripts(
+      committedTranscriptRef.current,
+      sessionTranscriptRef.current,
+    )
+    committedTranscriptRef.current = merged.text
+
+    if (merged.keep === 'incoming') {
+      committedConfidencesRef.current = [...sessionConfidencesRef.current]
+    } else if (merged.keep === 'both') {
+      committedConfidencesRef.current.push(...sessionConfidencesRef.current)
+    }
+
+    sessionTranscriptRef.current = ''
+    sessionConfidencesRef.current = []
   }, [])
 
   /** Settle the recording into either `complete` or `error`. */

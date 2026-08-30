@@ -141,6 +141,12 @@ body {
 
 .footer p {
   margin: 0;
+  max-width: 46ch;
+  margin-inline: auto;
+}
+
+.footer p + p {
+  margin-top: 0.5rem;
 }
 
 /* ------------------------------------------------------------------ hero */
@@ -1013,10 +1019,17 @@ body {
   border: 1px solid rgba(244, 63, 94, 0.35);
 }
 
-.support-line {
-  margin: 0;
+.notice--info {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Fine print under the Record button: present, but not competing with it. */
+.privacy-line {
+  margin: -0.4rem 0 0;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 

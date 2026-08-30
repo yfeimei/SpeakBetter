@@ -6,12 +6,13 @@
  * first. Interactive behaviour is left to manual testing in a browser.
  */
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { Home } from '../pages/Home'
 import { Practice } from '../pages/Practice'
 import { ResultCard } from './ResultCard'
 import { ProgressCard } from './ProgressCard'
+import { SupportNotice } from './SupportNotice'
 import { analyzeSpeech, analyzeText } from '../services/api'
 import type { SessionRecord } from '../types'
 
@@ -57,6 +58,41 @@ describe('Home', () => {
     expect(html).toContain('Start Practicing')
   })
 
+  it('says in the footer that transcription happens outside the app', () => {
+    // The README documents this; a learner deciding whether to speak reads the
+    // page, not the README.
+    const html = renderToString(
+      <Home
+        sessions={SESSIONS}
+        selectedLevel="beginner"
+        onSelectLevel={noop}
+        onStart={noop}
+        onStartCustom={noop}
+        onClearHistory={noop}
+      />,
+    )
+
+    expect(html).toContain('done by your browser, not by SpeakBetter')
+    expect(html).toContain('never uploads your voice')
+  })
+
+  it('no longer claims that everything runs in your browser', () => {
+    // The old footer wording was the exact overclaim the README warns against:
+    // recognition leaves the device even though the app never uploads a thing.
+    const html = renderToString(
+      <Home
+        sessions={[]}
+        selectedLevel="beginner"
+        onSelectLevel={noop}
+        onStart={noop}
+        onStartCustom={noop}
+        onClearHistory={noop}
+      />,
+    )
+
+    expect(html).not.toContain('Everything runs in your browser')
+  })
+
   it('offers all three difficulty levels', () => {
     const html = renderToString(
       <Home
@@ -72,6 +108,39 @@ describe('Home', () => {
     expect(html).toContain('Beginner')
     expect(html).toContain('Intermediate')
     expect(html).toContain('Advanced')
+  })
+})
+
+describe('SupportNotice', () => {
+  /** Stand in for a browser, since the platform check has no feature test. */
+  const asBrowser = (userAgent: string, maxTouchPoints = 0) => {
+    vi.stubGlobal('window', { SpeechRecognition: function Recognition() {} })
+    vi.stubGlobal('navigator', { userAgent, maxTouchPoints })
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('recommends a computer to someone already on one', () => {
+    asBrowser('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0')
+
+    expect(renderToString(<SupportNotice />)).toContain('Best used on a desktop or laptop')
+  })
+
+  it('warns rather than recommends on a phone', () => {
+    asBrowser('Mozilla/5.0 (Linux; Android 14; SM-S911B) Chrome/140.0.0.0 Mobile Safari/537.36', 5)
+
+    const html = renderToString(<SupportNotice />)
+
+    expect(html).toContain('works best on a computer')
+    expect(html).not.toContain('Best used on a desktop or laptop')
+  })
+
+  it('says nothing on the practice page when the browser is supported', () => {
+    asBrowser('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0')
+
+    expect(renderToString(<SupportNotice variant="compact" />)).toBe('')
   })
 })
 
@@ -156,7 +225,7 @@ describe('ResultCard', () => {
     )
 
     expect(html).not.toContain('<audio')
-    expect(html).toContain('Recording not available')
+    expect(html).toContain('could not be saved')
   })
 
   it('always shows something to work on next', () => {

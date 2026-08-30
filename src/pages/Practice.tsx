@@ -4,6 +4,7 @@ import { ExerciseCard } from '../components/ExerciseCard'
 import { RecordButton } from '../components/RecordButton'
 import { ResultCard } from '../components/ResultCard'
 import { CustomSentenceCard } from '../components/CustomSentenceCard'
+import { PrivacyNotice } from '../components/PrivacyNotice'
 import { SupportNotice } from '../components/SupportNotice'
 import { LEVELS, LEVEL_LABELS, countWords, isParagraph } from '../data/exercises'
 import { recordingBudgetMs, useSpeechRecorder } from '../hooks/useSpeechRecorder'
@@ -271,6 +272,8 @@ export function Practice({
           disabled={!recorder.recognitionSupported}
         />
       )}
+
+      {!result && recorder.recognitionSupported && <PrivacyNotice variant="compact" />}
 
       {recorder.error && !result && (
         <div className="notice notice--error" role="alert">

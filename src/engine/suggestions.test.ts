@@ -174,9 +174,14 @@ describe('validateCustomSentence', () => {
     expect(validateCustomSentence(paragraph).ok).toBe(true)
   })
 
+  it('accepts a passage that fills the three-minute recording budget', () => {
+    // ~145 words is what the budget covers; this has to stay inside the limit.
+    expect(validateCustomSentence('word '.repeat(145)).ok).toBe(true)
+  })
+
   it('rejects something too long to say in one recording', () => {
-    const result = validateCustomSentence('word '.repeat(120))
+    const result = validateCustomSentence('word '.repeat(250))
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.error).toMatch(/400 characters/)
+    if (!result.ok) expect(result.error).toMatch(/1000 characters/)
   })
 })

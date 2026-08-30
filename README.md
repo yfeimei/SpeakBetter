@@ -156,9 +156,10 @@ from reading one sentence in isolation.
 
 Two things had to change to support that:
 
-- **The recording budget scales with length**: `4 s + 0.7 s per word`, floored
-  at 15 s and capped at 60 s. A beginner sentence gets 15 s; a 39-word advanced
-  paragraph gets 31 s.
+- **The recording budget scales with length**: `6 s + 1.2 s per word`, floored
+  at 15 s and capped at 3 minutes. A beginner sentence gets 15 s; a 39-word
+  advanced paragraph gets 53 s. The per-word rate is set for a learner reading
+  aloud — roughly 50 words a minute — rather than for conversational pace.
 - **Recognition runs in continuous mode** above twelve words. This is not
   optional — with it off, the recognizer treats the first pause as the end of
   the utterance, so on a three-sentence paragraph it would transcribe only the
@@ -263,9 +264,9 @@ leaves your device."
 
 Every failure mode in the requirements is handled with a specific message:
 microphone permission denied, no microphone found, empty recording, nothing
-recognized, network unavailable, and speech-service failure. Recordings are
-capped at 15 seconds, and if recognition goes quiet the app settles after a
-5-second grace period rather than hanging.
+recognized, network unavailable, and speech-service failure. Recordings run to
+a budget of at least 15 seconds and at most 3 minutes, and if recognition goes
+quiet the app settles after a 5-second grace period rather than hanging.
 
 Storage failures are non-fatal — in private browsing, practice still works, it
 just is not remembered.

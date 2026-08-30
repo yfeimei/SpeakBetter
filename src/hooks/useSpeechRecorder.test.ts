@@ -13,6 +13,7 @@ import {
   MAX_RECORDING_MS,
   MIN_RECORDING_MS,
   collectSessionTranscript,
+  mergeTranscripts,
   recordingBudgetMs,
   type RecognitionResultLike,
 } from './useSpeechRecorder'
@@ -74,6 +75,60 @@ describe('collectSessionTranscript', () => {
     expect(event2.final.match(/usually/g)).toHaveLength(1)
   })
 
+  it('does not repeat an utterance the recognizer restates a word at a time', () => {
+    // The Samsung Android report: every final result restates the whole
+    // utterance so far, so joining them gave "I I usually I usually go ...".
+    const { final: text } = collectSessionTranscript([
+      final('I'),
+      final('I usually'),
+      final('I usually go'),
+      final('I usually go to work'),
+      final(SENTENCE_ONE),
+    ])
+
+    expect(text.trim()).toBe(SENTENCE_ONE)
+  })
+
+  it('keeps a restated utterance separate from the sentence that follows it', () => {
+    const { final: text } = collectSessionTranscript([
+      final('I usually'),
+      final(SENTENCE_ONE),
+      final(SENTENCE_TWO),
+    ])
+
+    expect(text.trim()).toBe(`${SENTENCE_ONE} ${SENTENCE_TWO}`)
+  })
+
+  it('keeps repetition the learner actually spoke', () => {
+    // Two attempts at the same opening is a real thing to say, and the shared
+    // words are a prefix of neither whole, so both must survive.
+    const { final: text } = collectSessionTranscript([
+      final('I usually go to work by bus'),
+      final(SENTENCE_ONE),
+    ])
+
+    expect(text.trim()).toBe(`I usually go to work by bus ${SENTENCE_ONE}`)
+  })
+
+  it('collapses a restated interim rather than running the words together', () => {
+    const { interim: text } = collectSessionTranscript([
+      interim('I usually'),
+      interim('I usually go'),
+    ])
+
+    expect(text).toBe('I usually go')
+  })
+
+  it('scores a restatement once, not once per delivery', () => {
+    const { confidences } = collectSessionTranscript([
+      final('I usually', 0.4),
+      final(SENTENCE_ONE, 0.9),
+      final(SENTENCE_TWO, 0.6),
+    ])
+
+    expect(confidences).toEqual([0.9, 0.6])
+  })
+
   it('collects confidence only from final results', () => {
     const { confidences } = collectSessionTranscript([
       final(SENTENCE_ONE, 0.8),
@@ -89,11 +144,59 @@ describe('collectSessionTranscript', () => {
   })
 })
 
+describe('mergeTranscripts', () => {
+  it('carries on across a restarted session', () => {
+    // The ordinary continuous-mode case: the recognizer stopped after the
+    // first sentence and the next session picked up from there.
+    const merged = mergeTranscripts(`${SENTENCE_ONE} `, SENTENCE_TWO)
+
+    expect(merged.text).toBe(`${SENTENCE_ONE} ${SENTENCE_TWO}`)
+    expect(merged.keep).toBe('both')
+  })
+
+  it('absorbs a restarted session that restates the passage so far', () => {
+    const merged = mergeTranscripts(`${SENTENCE_ONE} `, `${SENTENCE_ONE} ${SENTENCE_TWO}`)
+
+    expect(merged.text).toBe(`${SENTENCE_ONE} ${SENTENCE_TWO}`)
+    expect(merged.keep).toBe('incoming')
+  })
+
+  it('drops a session that only repeats what is already committed', () => {
+    const merged = mergeTranscripts(`${SENTENCE_ONE} ${SENTENCE_TWO}`, SENTENCE_ONE)
+
+    expect(merged.text).toBe(`${SENTENCE_ONE} ${SENTENCE_TWO}`)
+    expect(merged.keep).toBe('committed')
+  })
+
+  it('ignores punctuation and casing when comparing', () => {
+    const merged = mergeTranscripts('I usually go,', 'i usually go to work by train')
+
+    expect(merged.text).toBe('i usually go to work by train')
+  })
+
+  it('handles either side being empty', () => {
+    expect(mergeTranscripts('', SENTENCE_ONE)).toEqual({ text: SENTENCE_ONE, keep: 'incoming' })
+    expect(mergeTranscripts(SENTENCE_ONE, '')).toEqual({ text: SENTENCE_ONE, keep: 'committed' })
+  })
+})
+
 describe('the duplication bug, end to end', () => {
   const target = 'I usually go to work by train. The journey takes about forty minutes.'
 
   it('scores a clean transcript perfectly', () => {
     expect(analyzeText(target, `${SENTENCE_ONE} ${SENTENCE_TWO}`).score).toBe(100)
+  })
+
+  it('scores the Android delivery pattern as if it had arrived once', () => {
+    const results = [
+      final('I'),
+      final('I usually'),
+      final('I usually go'),
+      final(SENTENCE_ONE),
+      final(`${SENTENCE_ONE} ${SENTENCE_TWO}`),
+    ]
+
+    expect(analyzeText(target, collectSessionTranscript(results).final).score).toBe(100)
   })
 
   it('shows why duplication had to be fixed', () => {
@@ -113,9 +216,19 @@ describe('recordingBudgetMs', () => {
   })
 
   it('scales with the length of the passage', () => {
-    // 4s lead plus 0.7s per word.
-    expect(recordingBudgetMs(21)).toBe(4_000 + 21 * 700)
-    expect(recordingBudgetMs(39)).toBe(4_000 + 39 * 700)
+    // 6s lead plus 1.2s per word.
+    expect(recordingBudgetMs(21)).toBe(6_000 + 21 * 1_200)
+    expect(recordingBudgetMs(39)).toBe(6_000 + 39 * 1_200)
+  })
+
+  it('gives a long passage room a learner can actually use', () => {
+    // The 36-word paragraph that ran out at 29s under the old 4s + 0.7s/word.
+    expect(recordingBudgetMs(36)).toBeGreaterThan(45_000)
+  })
+
+  it('allows up to three minutes', () => {
+    expect(MAX_RECORDING_MS).toBe(180_000)
+    expect(recordingBudgetMs(145)).toBe(MAX_RECORDING_MS)
   })
 
   it('never exceeds the ceiling', () => {

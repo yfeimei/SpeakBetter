@@ -11,7 +11,12 @@
       "PowerShell(npm *)",
       "PowerShell(Start-Process \"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\" -ArgumentList \"http://localhost:5173/\")",
       "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; npx tsc --noEmit 2>&1 | Select-Object -First 30; \"--- exit $LASTEXITCODE ---\")",
-      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; npx tsc --noEmit 2>&1 | Select-Object -First 20; \"--- tsc exit $LASTEXITCODE ---\")"
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;\" + $env:Path; npx tsc --noEmit 2>&1 | Select-Object -First 20; \"--- tsc exit $LASTEXITCODE ---\")",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://10.0.0.66:5173/\" -SkipCertificateCheck -TimeoutSec 10 } catch { $r = $null }; if \\($null -eq $r\\) { $h = [Net.Http.HttpClientHandler]::new\\(\\); $h.ServerCertificateCustomValidationCallback = { $true }; $c = [Net.Http.HttpClient]::new\\($h\\); $resp = $c.GetAsync\\(\"https://10.0.0.66:5173/\"\\).Result; \"Status: \" + [int]$resp.StatusCode; $resp.Content.ReadAsStringAsync\\(\\).Result.Substring\\(0,200\\) } else { \"Status: \" + $r.StatusCode })",
+      "Bash(curl *)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;$env:PATH\"; npx tsc --noEmit)",
+      "Bash(f=\"/c/Users/yfei_/AppData/Local/Temp/claude/C--Users-yfei--aiprojects-EmilyProject-SpeakBetter/3c86ef30-f3be-4e77-965b-3fc770e9f2f3/tasks/bebr07hv6.output\"; tail -n 8 \"$f\"; echo \"--- reachable? ---\"; curl -sk -o /dev/null -w \"HTTP %{http_code}\\\\n\" --max-time 10 https://10.0.0.66:5173/)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;$env:PATH\"; npx tsc --noEmit; if \\($?\\) { npm test })"
     ]
   }
 }

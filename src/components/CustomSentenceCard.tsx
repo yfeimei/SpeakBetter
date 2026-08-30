@@ -1,6 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { MAX_CUSTOM_SENTENCE_LENGTH, validateCustomSentence } from '../services/api'
 
+/**
+ * Where the character count starts warning. Kept proportional to the limit so
+ * it stays a useful heads-up rather than a warning that arrives too late.
+ */
+const COUNT_WARN_AT = Math.round(MAX_CUSTOM_SENTENCE_LENGTH * 0.9)
+
 interface CustomSentenceCardProps {
   /** Previously used sentences, newest first. */
   recent: string[]
@@ -76,10 +82,10 @@ export function CustomSentenceCard({
         />
 
         <div className="custom__meta">
-          <span className={value.length > MAX_CUSTOM_SENTENCE_LENGTH - 40 ? 'custom__count--warn' : ''}>
+          <span className={value.length > COUNT_WARN_AT ? 'custom__count--warn' : ''}>
             {value.length} / {MAX_CUSTOM_SENTENCE_LENGTH}
           </span>
-          <span>A sentence or a short paragraph</span>
+          <span>A sentence or a paragraph</span>
         </div>
 
         {error && (

@@ -20,10 +20,13 @@ import type { AnalysisResult, Exercise, Level, SpeechMeta } from '../types'
 export const CUSTOM_EXERCISE_ID = 0
 
 /**
- * Longest passage a learner may enter, in characters. Roughly sixty words,
- * which matches the longest paragraph in the library.
+ * Longest passage a learner may enter, in characters — roughly 160 words.
+ *
+ * Sized against the recording budget rather than the text box: three minutes
+ * at a learner's reading pace covers about 145 words, so this leaves a little
+ * headroom without accepting a passage nobody could finish in one recording.
  */
-export const MAX_CUSTOM_SENTENCE_LENGTH = 400
+export const MAX_CUSTOM_SENTENCE_LENGTH = 1_000
 
 /** Mirrors `GET /api/exercises?level=beginner`. */
 export function fetchExercises(level: Level): Exercise[] {
@@ -99,7 +102,7 @@ export function validateCustomSentence(
   if (text.length > MAX_CUSTOM_SENTENCE_LENGTH) {
     return {
       ok: false,
-      error: `Keep it under ${MAX_CUSTOM_SENTENCE_LENGTH} characters — about a paragraph, or roughly a minute of speaking.`,
+      error: `Keep it under ${MAX_CUSTOM_SENTENCE_LENGTH} characters — around 160 words, or about three minutes of speaking.`,
     }
   }
 

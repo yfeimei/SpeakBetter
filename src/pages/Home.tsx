@@ -1,5 +1,6 @@
 import { Header } from '../components/Header'
 import { ProgressCard } from '../components/ProgressCard'
+import { PrivacyNotice } from '../components/PrivacyNotice'
 import { SupportNotice } from '../components/SupportNotice'
 import {
   LEVELS,
@@ -75,10 +76,7 @@ export function Home({
       <ProgressCard sessions={sessions} onClear={onClearHistory} />
 
       <footer className="footer">
-        <p>
-          Everything runs in your browser. Your recordings are never uploaded or stored on a
-          server.
-        </p>
+        <PrivacyNotice />
       </footer>
     </div>
   )

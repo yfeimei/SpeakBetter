@@ -11,6 +11,16 @@ const RATES: Record<SpeakRate, number> = {
   slow: 0.6,
 }
 
+/**
+ * Playback volume for the model voice, 0 to 1.
+ *
+ * Deliberately the midpoint, not 1 — which is what an unset `volume` gives
+ * you. Full volume is startling on a laptop with the system volume already up,
+ * and the learner hears this on every exercise. Half leaves them room to move
+ * with the system control in either direction.
+ */
+export const MODEL_VOICE_VOLUME = 0.5
+
 /** Voice list loads asynchronously in most browsers, so it is cached here. */
 let cachedVoice: SpeechSynthesisVoice | null = null
 
@@ -72,6 +82,7 @@ export function speak(text: string, rate: SpeakRate = 'normal'): Promise<void> {
     utterance.lang = voice?.lang ?? 'en-US'
     utterance.rate = RATES[rate]
     utterance.pitch = 1
+    utterance.volume = MODEL_VOICE_VOLUME
 
     utterance.onend = () => resolve()
     utterance.onerror = (event) => {
