@@ -149,6 +149,13 @@ body {
   margin-top: 0.5rem;
 }
 
+/* Sits further from the privacy text than that text's own paragraphs sit
+   from each other, so it reads as a separate note. Needs to out-specify
+   the `.footer p + p` rule above. */
+.footer p + p.footer__credit {
+  margin-top: 1.25rem;
+}
+
 /* ------------------------------------------------------------------ hero */
 
 .hero {

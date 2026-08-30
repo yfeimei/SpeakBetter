@@ -77,6 +77,7 @@ export function Home({
 
       <footer className="footer">
         <PrivacyNotice />
+        <p className="footer__credit">Built by Emily Fei</p>
       </footer>
     </div>
   )

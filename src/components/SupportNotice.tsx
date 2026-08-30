@@ -49,12 +49,13 @@ export function SupportNotice({ variant = 'full' }: SupportNoticeProps) {
 
   // Everything below is what a supported desktop browser sees. Phones and
   // browsers without recognition were handled above and already say more.
+  // Kept to one line on purpose: this reader is already set up correctly,
+  // so the note only needs to confirm it, not explain what could go wrong.
   return (
     <div className="notice notice--info" role="note">
       <p>
-        <strong>Best used on a desktop or laptop.</strong> SpeakBetter listens through your
-        browser&rsquo;s built-in speech recognition, which is most accurate in Chrome or Edge on a
-        computer. Phone browsers often mishear, so scores from a phone are less reliable.
+        <strong>Best used on a desktop or laptop.</strong> Speech recognition is most accurate in
+        Chrome or Edge.
       </p>
     </div>
   )
