@@ -7,7 +7,21 @@
  * different skill from reading one sentence in isolation.
  *
  * Content is chosen to exercise the sounds the coaching engine knows about
- * (TH, R, V, W, L) and to grow in length with the level.
+ * (TH, R, V, W, L) and to grow in difficulty with the level.
+ *
+ * The levels differ in kind, not only in length:
+ *   - Beginner and Intermediate are ordinary sentences read at a careful pace.
+ *   - Advanced is written for someone already fluent, reading at the speed
+ *     they actually talk. Length alone does not make a passage hard, so these
+ *     lean on what stays hard at speed: consonant clusters ("asked for the
+ *     transcripts"), words native speakers themselves fumble ("rural juror",
+ *     "February", "particularly"), unstressed syllables that vanish when
+ *     hurried, contractions, and long sentences that have to be planned a
+ *     breath ahead. Read slowly, most of them are easy; that is the point.
+ *
+ * Vocabulary is kept to words a browser recognizer transcribes reliably —
+ * difficult to say, not obscure — and numbers are spelled in forms the
+ * normalizer already folds, so a good reading still scores like one.
  */
 
 import type { Exercise, Level } from '../types'
@@ -23,7 +37,7 @@ export const LEVEL_LABELS: Record<Level, string> = {
 export const LEVEL_DESCRIPTIONS: Record<Level, string> = {
   beginner: 'Short, everyday sentences',
   intermediate: 'Short paragraphs of two or three sentences',
-  advanced: 'Longer paragraphs and complex structures',
+  advanced: 'Native-speed passages that are hard to say fluently',
 }
 
 /** What one item at this level is called, for counts and labels. */
@@ -98,55 +112,65 @@ export const EXERCISES: Exercise[] = [
     level: 'intermediate',
   },
 
-  // --- Advanced: three or four sentences -----------------------------------
+  // --- Advanced: read these at the speed you actually talk ------------------
+  // Consonant clusters that collapse when hurried: sk-t, -pts, -cts, -lfth.
   {
     id: 21,
-    text: 'I have been working on this project for several months. Although the results are encouraging, there is still a great deal to do before we can publish anything. I would rather take the extra time and get it right.',
+    text: 'The witness asked for the transcripts, then contradicted himself twice in the space of a single sentence. He had rehearsed the story so thoroughly that the gaps in it had a kind of polish, and the prosecutor, who had heard most of it before, simply waited for the twelfth contradiction to arrive.',
     level: 'advanced',
   },
+  // The R and L sequences that catch native speakers out at any speed.
   {
     id: 22,
-    text: 'Although the weather was terrible, we decided to go hiking. The path was muddy and the wind was strong, but the view from the top was genuinely worth the effort. We will certainly do it again.',
+    text: 'The rural juror thought the whole trial was ridiculous, and she said so in the corridor, loudly, to anyone who would listen. Particularly irritating, she said, was the lawyer who kept repeating the phrase "to the best of my recollection" as though it were a magic spell.',
     level: 'advanced',
   },
+  // Long Latinate words whose stress moves, plus a mouthful of a subject line.
   {
     id: 23,
-    text: 'The researchers thoroughly reviewed the results before publishing them. They repeated the most important measurements three times, and they asked two colleagues to check the calculations. Careful work of this kind rarely receives the attention it deserves.',
+    text: 'Statistically speaking, the phenomenon is unremarkable; particular regions have always reported irregular figures, and the specialists specifically warned against reading too much into them. What is genuinely remarkable is how quickly a badly worded summary travelled around the world before anybody thought to check the arithmetic.',
     level: 'advanced',
   },
+  // Fast idiomatic speech: contractions, weak forms, and a running argument.
   {
     id: 24,
-    text: 'Learning another language requires patience, practice, and a little courage. You will make mistakes, and some of them will be embarrassing, but every mistake teaches you something that a textbook never could.',
+    text: "Look, I'm not saying you're wrong, I'm saying the timing is terrible. If we announce it on Thursday we'll spend all of Friday explaining ourselves, and by Monday nobody will remember what the announcement was actually about. Let's give it a couple of weeks and see whether anyone still cares.",
     level: 'advanced',
   },
+  // Times and places rattled off the way people really give directions.
   {
     id: 25,
-    text: 'It is worth remembering that comfortable clothes make a long flight much easier. Bring a warm layer, drink plenty of water, and try to walk around the cabin every few hours.',
+    text: 'Her flight leaves at a quarter past six on Thursday morning, connects through Amsterdam, and lands the following afternoon. She has thirty minutes to change terminals, which anybody who has been through that airport will tell you is optimistic to the point of comedy.',
     level: 'advanced',
   },
+  // Office register, and February, which almost nobody says as it is written.
   {
     id: 26,
-    text: 'The government announced three significant changes to the policy. The first will take effect immediately, while the others will be introduced gradually over the following year. Businesses have already asked for clearer guidance.',
+    text: 'The committee recommendations were, characteristically, both comprehensive and completely unworkable. Implementing them would require a level of administrative coordination this department has never once demonstrated, and the deadline they have proposed is the middle of February, which gives us precisely eleven weeks.',
     level: 'advanced',
   },
+  // Voiced and unvoiced TH stacked close together, with nothing to hide behind.
   {
     id: 27,
-    text: 'I would have finished the report earlier if the library had been open. Unfortunately the building closed for repairs, and the material I needed was not available anywhere else.',
+    text: 'They gathered the three of them together and asked, without much warmth, whether either brother had anything further to add. Neither of them thought so. The whole thing was over in something like ninety seconds, and nothing that actually mattered was said out loud.',
     level: 'advanced',
   },
+  // Syllables that disappear at speed: library, temperature, comfortable.
   {
     id: 28,
-    text: 'Their thoughtful suggestions completely changed the direction of our work. We had been focusing on the wrong problem for weeks, and a single conversation was enough to make that obvious.',
+    text: 'He asked me, quite seriously, whether the library kept its temperature that low deliberately. I said it probably had something to do with the older books, though comfortable is not the word I would choose for any room where you can watch your own breath.',
     level: 'advanced',
   },
+  // The endings that get swallowed first: -ed, -ts, -ed again, plural S.
   {
     id: 29,
-    text: 'Whether or not we succeed, the experience will be genuinely valuable. We have already learned more in the last three months than in the previous three years, and that knowledge will not disappear.',
+    text: 'The tests were repeated, the results were checked and rechecked, and the earlier conclusions were quietly withdrawn. Nobody involved pretended to be pleased about it, but the alternative was publishing figures that half the field had already stopped believing.',
     level: 'advanced',
   },
+  // One long sentence that has to be planned a breath ahead of the voice.
   {
     id: 30,
-    text: 'She would rather travel by train than wait at the airport. The journey takes longer, but she can work comfortably, watch the countryside go past, and arrive without feeling exhausted.',
+    text: 'What nobody mentions about learning to speak clearly is that the hardest part is not the individual sounds at all. It is the rhythm: knowing which words to lean on, which ones to swallow, and when to stop talking altogether so that the person listening has room to reply.',
     level: 'advanced',
   },
 ]

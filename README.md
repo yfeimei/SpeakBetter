@@ -154,6 +154,19 @@ two to four sentences, because reading connected speech — carrying intonation
 across a sentence boundary, breathing in sensible places — is a different skill
 from reading one sentence in isolation.
 
+**Advanced is a different kind of hard, not just a longer one.** It is written
+for someone already fluent, reading at the speed they actually talk, so the
+passages lean on what stays difficult at that speed rather than on length:
+consonant clusters that collapse when hurried (*asked for the transcripts*,
+*the twelfth contradiction*), words native speakers themselves fumble (*rural
+juror*, *February*, *particularly*), unstressed syllables that vanish when
+rushed (*library*, *temperature*, *comfortable*), contractions and weak forms,
+and sentences long enough that the breath has to be planned ahead. Read slowly,
+most of them are easy — that is what makes them a test. Vocabulary stays within
+what a browser recognizer transcribes reliably (hard to say, not obscure) and
+numbers are written in forms the normalizer folds, so a good reading still
+scores like one.
+
 Two things had to change to support that:
 
 - **The recording budget scales with length**: `6 s + 1.2 s per word`, floored
