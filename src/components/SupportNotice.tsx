@@ -18,20 +18,6 @@ interface SupportNoticeProps {
 export function SupportNotice({ variant = 'full' }: SupportNoticeProps) {
   const support = getPlatformSupport()
 
-  if (support === 'mobile') {
-    return (
-      <div className="notice notice--warning" role="status">
-        <p>
-          <strong>SpeakBetter works best on a computer.</strong> It relies on your browser&rsquo;s
-          built-in speech recognition, which is currently only reliable in Chrome or Edge on a
-          laptop or desktop. On a phone it may mishear you or miss words entirely, so your score
-          won&rsquo;t reflect how well you actually spoke.
-        </p>
-        <p>You&rsquo;re welcome to look around — just open this page on a computer to practice.</p>
-      </div>
-    )
-  }
-
   if (support === 'no-recognition') {
     return (
       <div className="notice notice--warning" role="status">
@@ -47,10 +33,10 @@ export function SupportNotice({ variant = 'full' }: SupportNoticeProps) {
 
   if (variant === 'compact') return null
 
-  // Everything below is what a supported desktop browser sees. Phones and
-  // browsers without recognition were handled above and already say more.
-  // Kept to one line on purpose: this reader is already set up correctly,
-  // so the note only needs to confirm it, not explain what could go wrong.
+  // Everything below is what any browser with recognition sees, phones
+  // included: the same one-line note rather than a longer warning, so the
+  // page reads the same everywhere. Browsers without recognition were
+  // handled above and already say more.
   return (
     <div className="notice notice--info" role="note">
       <p>

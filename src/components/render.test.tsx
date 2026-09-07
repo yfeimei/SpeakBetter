@@ -128,13 +128,13 @@ describe('SupportNotice', () => {
     expect(renderToString(<SupportNotice />)).toContain('Best used on a desktop or laptop')
   })
 
-  it('warns rather than recommends on a phone', () => {
+  it('says the same thing on a phone as on a computer', () => {
     asBrowser('Mozilla/5.0 (Linux; Android 14; SM-S911B) Chrome/140.0.0.0 Mobile Safari/537.36', 5)
 
     const html = renderToString(<SupportNotice />)
 
-    expect(html).toContain('works best on a computer')
-    expect(html).not.toContain('Best used on a desktop or laptop')
+    expect(html).toContain('Best used on a desktop or laptop')
+    expect(html).not.toContain('works best on a computer')
   })
 
   it('says nothing on the practice page when the browser is supported', () => {
