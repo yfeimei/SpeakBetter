@@ -246,7 +246,7 @@ export function Practice({
         ))}
       </div>
 
-      <SupportNotice variant="compact" />
+      <SupportNotice />
 
       <ExerciseCard
         sentence={exercise.text}

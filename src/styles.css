@@ -190,16 +190,26 @@ body {
 
 .levels__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.4rem;
+}
+
+/* Three levels across, or one per row — never two with a third stranded
+   underneath, which reads as a layout bug rather than a choice. The three
+   only fit side by side above roughly 620px of viewport, once the page
+   gutters and card padding are taken off, so below that they stack. */
+@media (max-width: 620px) {
+  .levels__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .level {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  text-align: left;
+  text-align: center;
   padding: 0.95rem 1rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -224,12 +234,6 @@ body {
 
 .level__name {
   font-weight: 700;
-}
-
-.level__description,
-.level__count {
-  font-size: 0.8rem;
-  color: var(--text-muted);
 }
 
 .practice__levels {

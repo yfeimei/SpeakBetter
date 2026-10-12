@@ -2,10 +2,14 @@ import { getPlatformSupport } from '../services/platform'
 
 interface SupportNoticeProps {
   /**
-   * `full` shows a one-line note on the home page. `compact` shows nothing
-   * when everything is supported, for use on the practice page.
+   * `warning` is the box for a browser that cannot listen at all, and nothing
+   * when it can. It belongs at the top of a page, where someone reads it
+   * before reaching for Record.
+   *
+   * `note` is the plain line recommending a computer, for the home page
+   * footer. It stays quiet when the warning has already said more.
    */
-  variant?: 'full' | 'compact'
+  variant?: 'warning' | 'note'
 }
 
 /**
@@ -15,10 +19,14 @@ interface SupportNoticeProps {
  * Record button fails: the whole app depends on browser speech recognition,
  * and that support is uneven.
  */
-export function SupportNotice({ variant = 'full' }: SupportNoticeProps) {
+export function SupportNotice({ variant = 'warning' }: SupportNoticeProps) {
   const support = getPlatformSupport()
 
   if (support === 'no-recognition') {
+    // The footer note would only repeat, in weaker words, what this warning
+    // already says about needing Chrome or Edge on a computer.
+    if (variant === 'note') return null
+
     return (
       <div className="notice notice--warning" role="status">
         <p>
@@ -31,18 +39,16 @@ export function SupportNotice({ variant = 'full' }: SupportNoticeProps) {
     )
   }
 
-  if (variant === 'compact') return null
+  if (variant === 'warning') return null
 
-  // Everything below is what any browser with recognition sees, phones
-  // included: the same one-line note rather than a longer warning, so the
-  // page reads the same everywhere. Browsers without recognition were
-  // handled above and already say more.
+  // What any browser with recognition sees, phones included: the same line
+  // everywhere, as bare text that takes the styling of whatever it sits in —
+  // currently the home page footer, alongside the privacy paragraphs. A
+  // recommendation is not a problem to solve, so it does not need a box.
   return (
-    <div className="notice notice--info" role="note">
-      <p>
-        <strong>Best used on a desktop or laptop.</strong> Speech recognition is most accurate in
-        Chrome or Edge.
-      </p>
-    </div>
+    <p>
+      <strong>Best used on a desktop or laptop.</strong> Speech recognition is most accurate in
+      Chrome or Edge.
+    </p>
   )
 }

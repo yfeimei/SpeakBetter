@@ -125,22 +125,38 @@ describe('SupportNotice', () => {
   it('recommends a computer to someone already on one', () => {
     asBrowser('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0')
 
-    expect(renderToString(<SupportNotice />)).toContain('Best used on a desktop or laptop')
+    expect(renderToString(<SupportNotice variant="note" />)).toContain(
+      'Best used on a desktop or laptop',
+    )
   })
 
   it('says the same thing on a phone as on a computer', () => {
     asBrowser('Mozilla/5.0 (Linux; Android 14; SM-S911B) Chrome/140.0.0.0 Mobile Safari/537.36', 5)
 
-    const html = renderToString(<SupportNotice />)
+    const html = renderToString(<SupportNotice variant="note" />)
 
     expect(html).toContain('Best used on a desktop or laptop')
     expect(html).not.toContain('works best on a computer')
   })
 
-  it('says nothing on the practice page when the browser is supported', () => {
+  it('leaves the recommendation unboxed, so the footer styles it', () => {
     asBrowser('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0')
 
-    expect(renderToString(<SupportNotice variant="compact" />)).toBe('')
+    expect(renderToString(<SupportNotice variant="note" />)).not.toContain('notice--info')
+  })
+
+  it('says nothing when the browser is supported', () => {
+    asBrowser('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0')
+
+    expect(renderToString(<SupportNotice />)).toBe('')
+  })
+
+  it('drops the footer recommendation when the warning already covers it', () => {
+    vi.stubGlobal('window', {})
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0' })
+
+    expect(renderToString(<SupportNotice />)).toContain('can’t listen to speech')
+    expect(renderToString(<SupportNotice variant="note" />)).toBe('')
   })
 })
 

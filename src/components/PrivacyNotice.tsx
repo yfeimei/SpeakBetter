@@ -33,13 +33,11 @@ export function PrivacyNotice({ variant = 'full' }: PrivacyNoticeProps) {
   return (
     <>
       <p>
-        Turning speech into text is done by your browser, not by SpeakBetter &mdash; and your
-        browser does it by sending the audio to its own speech service, Google&rsquo;s in Chrome and
-        Microsoft&rsquo;s in Edge.
+        Turning speech into text is done by your browser, not by SpeakBetter.
       </p>
       <p>
-        SpeakBetter itself never uploads your voice and never writes it to disk. Your recording is
-        held in the page only long enough to play back, and your scores stay on this device.
+        SpeakBetter never uploads your voice and never writes it to disk. Your recording is
+        held in the page only long enough to play back. Your scores stay on this device.
       </p>
     </>
   )

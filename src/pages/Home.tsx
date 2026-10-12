@@ -2,13 +2,7 @@ import { Header } from '../components/Header'
 import { ProgressCard } from '../components/ProgressCard'
 import { PrivacyNotice } from '../components/PrivacyNotice'
 import { SupportNotice } from '../components/SupportNotice'
-import {
-  LEVELS,
-  LEVEL_DESCRIPTIONS,
-  LEVEL_LABELS,
-  LEVEL_UNIT,
-  getExercises,
-} from '../data/exercises'
+import { LEVELS, LEVEL_LABELS } from '../data/exercises'
 import type { Level, SessionRecord } from '../types'
 
 interface HomeProps {
@@ -53,10 +47,6 @@ export function Home({
               aria-pressed={selectedLevel === level}
             >
               <span className="level__name">{LEVEL_LABELS[level]}</span>
-              <span className="level__description">{LEVEL_DESCRIPTIONS[level]}</span>
-              <span className="level__count">
-                {getExercises(level).length} {LEVEL_UNIT[level]}
-              </span>
             </button>
           ))}
         </div>
@@ -76,6 +66,7 @@ export function Home({
       <ProgressCard sessions={sessions} onClear={onClearHistory} />
 
       <footer className="footer">
+        <SupportNotice variant="note" />
         <PrivacyNotice />
         <p className="footer__credit">Built by Emily Fei</p>
       </footer>
